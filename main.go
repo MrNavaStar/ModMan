@@ -249,6 +249,24 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name: "migrate",
+				Usage: "migrate an instance to a newer game version",
+				Action: func(c *cli.Context) error {
+					state, err := fileutils.LoadAppState()
+					if err != nil {
+						return err
+					} 
+					
+					fmt.Println("Migrating " + state.ActiveInstance + " to " + c.Args().Get(0))
+					err1 := services.MigrateInstanceToVersion(state.ActiveInstance, c.Args().Get(0))
+					if err1 != nil {
+						return err1
+					}
+					fmt.Println("Done.")
+					return services.SetActiveInstance(state.ActiveInstance + "_Migrated")
+				},
+			},
 		},
 	}
 	

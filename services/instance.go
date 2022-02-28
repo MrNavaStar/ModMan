@@ -216,11 +216,17 @@ func UpdateInstance(name string) error {
 		return err1
 	}
 
+	//Update fabric installer
+	err2 := api.InstallOrUpdateFabricInstaller()
+	if err2 != nil {
+		return err2
+	}
+
 	//Update fabric loader
 	if semver.Compare(instance.FabricLoaderVersion, flVersion) == -1 {
-		err2 := api.InstallFabricLoader(&state, instance.Version, flVersion)
-		if err2 != nil {
-			return err2
+		err3 := api.InstallFabricLoader(&state, instance.Version, flVersion)
+		if err3 != nil {
+			return err3
 		}
 		instance.FabricLoaderVersion = flVersion
 	}
@@ -229,23 +235,52 @@ func UpdateInstance(name string) error {
 	for _, mod := range instance.Mods {
 		var modData util.ModData
 		if mod.Platform == "modrinth" {
-			modData, err3 := api.GetModrinthModData(modData.Slug, instance.Version)
-			if err3 != nil {
-				return err3
+			modData, err4 := api.GetModrinthModData(modData.Slug, instance.Version)
+			if err4 != nil {
+				return err4
 			}
 
 			if mod.Id != modData.Id {
-				err4 := RemoveMod(&instance, mod.Id)
-				if err4 != nil {
-					return err4
-				}
-
-				err5 := AddMod(&instance, "", modData)
+				err5 := RemoveMod(&instance, mod.Id)
 				if err5 != nil {
 					return err5
+				}
+
+				err6 := AddMod(&instance, "", modData)
+				if err6 != nil {
+					return err6
 				}
 			}
 		}
 	}	
 	return fileutils.SaveAppState(state)
+}
+
+func MigrateInstanceToVersion(name string, version string) error {
+	err := CreateInstance(name + "_Migrated", version)
+	if err != nil {
+		return err
+	}
+
+	oldInstance, err1 := GetInstance(name)
+	if err1 != nil {
+		return err1
+	}
+
+	newInstance, err2 := GetInstance(name + "_Migrated")
+	if err2 != nil {
+		return err2
+	}
+
+	for _, mod := range oldInstance.Mods {
+		err2 := AddMod(&newInstance, mod.Slug, util.ModData{})
+		if err2 != nil {
+			if err2.Error() == "failed to get mod data" {
+				fmt.Println(mod.Name + " does not have a version for " + version)
+			} else {
+				return err2
+			}
+		}
+	}
+	return SaveInstance(newInstance)
 }
