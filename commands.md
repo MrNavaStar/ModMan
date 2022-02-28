@@ -1,8 +1,8 @@
-modman ls                           -> list instances
-modman make [name] [version]        -> create new instance
-modman mod [name]                   -> modify an instance
-modman rm [name]                    -> remove an instance
-modman update [name] [version]      -> try and update instance
-modman install [mods]               -> install mods
-modman uninstall [mods]             -> uninstall mods
-modman [name] ls                    -> list installed mods
+- modman ls                           -> list instances
+- modman make [name] [version]        -> create new instance
+- modman mod [name]                   -> modify an instance
+- modman rm [name]                    -> remove an instance
+- modman update [name] [version]      -> try and update instance
+- modman install [mods]               -> install mods
+- modman uninstall [mods]             -> uninstall mods
+- modman [name] ls                    -> list installed mods
