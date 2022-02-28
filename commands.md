@@ -5,4 +5,4 @@
 - modman update [name] [version]      -> try and update instance
 - modman install [mods]               -> install mods
 - modman uninstall [mods]             -> uninstall mods
-- modman [name] ls                    -> list installed mods
+- modman lsmod                    -> list installed mods
