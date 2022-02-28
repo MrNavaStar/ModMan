@@ -53,13 +53,12 @@ func main() {
 						}
 					}
 
+					fmt.Println()
+					fmt.Println(text.AlignDefault.Apply("NAME:", lname +2) + text.AlignDefault.Apply("VERSION:", lversion))
 					for _, instance := range state.Instances {
-						fmt.Println()
-						fmt.Print(text.AlignDefault.Apply("NAME:", lname +2) + text.AlignDefault.Apply("VERSION:", lversion))
-						fmt.Println()
 						fmt.Println(text.AlignDefault.Apply(text.Bold.Sprintf(instance.Name), lname +2) + text.AlignDefault.Apply(instance.Version, lversion))
-						fmt.Println()
 					}
+					fmt.Println()
 					return nil
 				},
 			},
@@ -182,7 +181,7 @@ func main() {
 
 					for _, mod := range args.Slice() {
 						for _, modData := range instance.Mods {
-							if strings.EqualFold(modData.Name, mod) {
+							if strings.EqualFold(modData.Name, mod) || strings.EqualFold(modData.Slug, mod) {
 								err2 := services.RemoveMod(&instance, modData.Id)
 								if err2 != nil {
 									if err2.Error() == "no mod found" {
