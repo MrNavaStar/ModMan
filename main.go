@@ -234,6 +234,21 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name: "update",
+				Usage: "update an instance",
+				Action: func(c *cli.Context) error {
+					state, err := fileutils.LoadAppState()
+					if err != nil {
+						return err
+					}
+
+					fmt.Println("Updating " + state.ActiveInstance)
+					services.UpdateInstance(state.ActiveInstance)
+					fmt.Println("Done.")
+					return nil
+				},
+			},
 		},
 	}
 	
