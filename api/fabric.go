@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -51,6 +52,7 @@ func InstallOrUpdateFabricInstaller() error {
 
 	for _, installerVersion := range installerVersions {
 		if installerVersion.Stable && state.FabricInstallerVersion != installerVersion.Version {
+			fmt.Println("Installing fabric installer v" + installerVersion.Version)
 			err2 := fileutils.DownloadFile(installerVersion.Url, state.WorkDir + "/installers/fabric-installer.jar")
 			if err != nil {
 				return err2
