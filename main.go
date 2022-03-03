@@ -14,6 +14,11 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+type failedMod struct {
+	UserIn string
+	Slug string
+}
+
 func main() {
 	app := &cli.App{
 		Name: "ModMan",
@@ -147,6 +152,7 @@ func main() {
 						return err
 					} 
 					
+					var retrymods []failedMod
 					mods := args.Slice()
 					prefix := ""
 					for i := 0; i < len(mods); i++ {
@@ -171,11 +177,30 @@ func main() {
 									continue
 								}
 
-								fmt.Println("Failed to find mod under " + mod + ". Will try under " + slug + " later")
-								mods = append(mods, slug)
+								var failedMod failedMod
+								failedMod.UserIn = mod
+								failedMod.Slug = slug
+								retrymods = append(retrymods, failedMod)
+								continue
 							}
 						}
 						fmt.Println("Installed " + mod)
+					}
+
+					for _, mod := range retrymods {
+						var input string
+						fmt.Println("Failed to find mod under " + mod.UserIn)
+						fmt.Println("Would you like to try under " + mod.Slug + "? [Y/n]: ")
+						fmt.Scanln(&input)
+
+						if input == "Y" || input == "y" || input == "" {
+							err3 := services.AddMod(&instance, mod.Slug, util.ModData{})
+							if err3 != nil && err3.Error() == "mod already added"{
+								fmt.Println(mod.Slug + " has already been added")
+								continue
+							}
+							fmt.Println("Installed " + mod.Slug)
+						}
 					}
 					return services.SaveInstance(instance)
 				},
