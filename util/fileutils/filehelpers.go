@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/buger/jsonparser"
@@ -31,6 +32,23 @@ func Setup(dotMinecraft string) error {
 	return nil
 }
 
+type WriteCounter struct {
+	Total int64
+	Size int64
+}
+
+func (wc *WriteCounter) Write(p []byte) (int, error) {
+	n := len(p)
+	wc.Size += int64(n)
+	wc.PrintProgress()
+	return n, nil
+}
+
+func (wc WriteCounter) PrintProgress() {
+
+}
+
+
 func DownloadFile(url string, filepath string) error {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -38,13 +56,20 @@ func DownloadFile(url string, filepath string) error {
 	}
 	defer resp.Body.Close()
 
+	total, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
+	if err != nil {
+		return err
+	}
+
 	file, err := os.Create(filepath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	_, err = io.Copy(file, resp.Body)
+	counter := &WriteCounter{}
+	counter.Total = int64(total)
+	_, err = io.Copy(file, io.TeeReader(resp.Body, counter))
 	return err
 }
 

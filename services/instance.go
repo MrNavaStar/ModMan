@@ -163,7 +163,6 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData) error {
 
 	modData.Version = modJson.Version
 	instance.Mods = append(instance.Mods, modData)
-	fmt.Println("Installed " + modData.Name)
 	return nil
 }
 

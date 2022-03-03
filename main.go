@@ -42,6 +42,10 @@ func main() {
 						return err
 					}
 
+					if len(state.Instances) == 0 {
+						return nil
+					}
+
 					lname := 0
 					lversion := 0
 					for _, instance := range state.Instances {
@@ -66,8 +70,9 @@ func main() {
 				Name: "make",
 				Usage: "Create a  new instance",
 				Action: func(c *cli.Context) error {
-					args := c.Args()
-					_, err := services.GetInstance(args.Get(0))
+					name := c.Args().Get(0)
+					version := c.Args().Get(1)
+					_, err := services.GetInstance(name)
 					if err == nil {
 						fmt.Println("Instance with that name already exists")
 						return nil
@@ -76,15 +81,19 @@ func main() {
 					if err.Error() != "failed to find instance" {
 						return err
 					} 
+					
+					if version == "" {
+						version = "1.18.2"
+					}
 
-					fmt.Println("Creating " + args.Get(0))
-					err1 := services.CreateInstance(args.Get(0), args.Get(1))
+					fmt.Println("Creating " + name)
+					err1 := services.CreateInstance(name, version)
 					if err1 != nil {
 						return err1
 					}
 
 					fmt.Println("Done.")
-					return services.SetActiveInstance(args.Get(0))
+					return services.SetActiveInstance(name)
 				},
 			},
 			{
@@ -137,9 +146,18 @@ func main() {
 					if err1 != nil {
 						return err
 					} 
+					
+					mods := args.Slice()
+					prefix := ""
+					for i := 0; i < len(mods); i++ {
+						mod := mods[i]
 
-					for _, mod := range args.Slice() {
-						err2 := services.AddMod(&instance, mod, util.ModData{})
+						if mod == "-c" {
+							prefix = "c="
+							continue
+						}
+
+						err2 := services.AddMod(&instance, prefix + mod, util.ModData{})
 						if err2 != nil {
 							if err2.Error() == "mod already added" {
 								fmt.Println(mod + " has already been added")
@@ -153,13 +171,11 @@ func main() {
 									continue
 								}
 
-								err4 := services.AddMod(&instance, slug, util.ModData{})
-								if err4 != nil && err4.Error() == "mod already added" {
-									fmt.Println(slug + " has already been added")
-									continue
-								}
+								fmt.Println("Failed to find mod under " + mod + ". Will try under " + slug + " later")
+								mods = append(mods, slug)
 							}
-						}	
+						}
+						fmt.Println("Installed " + mod)
 					}
 					return services.SaveInstance(instance)
 				},
@@ -208,6 +224,10 @@ func main() {
 					instance, err1 := services.GetInstance(state.ActiveInstance)
 					if err1 != nil {
 						return err
+					}
+
+					if len(instance.Mods) == 0 { 
+						return nil
 					}
 
 					lname := 0
