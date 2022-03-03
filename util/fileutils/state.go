@@ -17,38 +17,29 @@ type State struct {
 	Instances []util.Instance
 }
 
-func SaveAppState(state State) error {
+func SaveAppState(state State) {
 	dotMinecraft, err := keyring.Get("modman", "dot_minecraft")
-    if err != nil {
-        return err
-    }
+    util.Fatal(err)
 
 	file, err1 := json.MarshalIndent(state, "", " ")
-	if err1 != nil {
-		return err1
-	}
+	util.Fatal(err1)
 
-	return ioutil.WriteFile(dotMinecraft + "/modman/modman.json", file, 0644)
+	err2 := ioutil.WriteFile(dotMinecraft + "/modman/modman.json", file, 0644)
+	util.Fatal(err2)
 }
 
-func LoadAppState() (s State, e error) {
+func LoadAppState() State {
 	dotMinecraft, err := keyring.Get("modman", "dot_minecraft")
-    if err != nil {
-        return State{}, err
-    }
+    util.Fatal(err)
 
 	data, err1 := ioutil.ReadFile(dotMinecraft + "/modman/modman.json")
-	if err1 != nil {
-		return State{}, err1
-	}
+	util.Fatal(err1)
 
 	var state State
 	err2 := json.Unmarshal(data, &state)
-	if err2 != nil {
-		return State{}, err2
-	}
+	util.Fatal(err2)
 
 	state.DotMinecraft = dotMinecraft
 	state.WorkDir = dotMinecraft + "/modman"
-	return state, nil
+	return state
 }

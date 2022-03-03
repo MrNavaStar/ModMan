@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -11,15 +10,12 @@ import (
 	"github.com/mrnavastar/modman/api"
 	"github.com/mrnavastar/modman/util"
 	"github.com/mrnavastar/modman/util/fileutils"
-	//"github.com/pterm/pterm/putils"
+	"github.com/pterm/pterm"
 	"golang.org/x/mod/semver"
 )
 
 func CreateInstance(name string, version string) error {
-	state, err := fileutils.LoadAppState()
-	if err != nil {
-		return err
-	}
+	state := fileutils.LoadAppState()
 
 	var instance util.Instance
 	instance.Name = name
@@ -33,13 +29,10 @@ func CreateInstance(name string, version string) error {
 	instance.FabricLoaderVersion = flversion
 	state.Instances = append(state.Instances, instance)
 	
-	err2 := api.InstallFabricLoader(&state, version, flversion)
-	if err2 != nil {
-		return err2
-	}
+	api.InstallFabricLoader(&state, version, flversion)
 
 	if _, err := os.Stat(instance.Path); os.IsNotExist(err) {
-		os.MkdirAll(instance.Path, 0700)
+		util.Fatal(os.MkdirAll(instance.Path, 0700))
 	}
 
 	//Create data for launcher_profiles.json
@@ -53,41 +46,20 @@ func CreateInstance(name string, version string) error {
 	profile.LastVersionId = "fabric-loader-" + instance.FabricLoaderVersion + "-" + version
 	profile.JavaArgs = "-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfabric.addMods=" + instance.Path
 	
-	err3 := fileutils.AddProfile(profile)
-	if err3 != nil {
-		return err3
-	}
-
-	err4 := fileutils.SaveAppState(state)
-	if err4 != nil {
-		return err4
-	}
+	util.Fatal(fileutils.AddProfile(profile))
+	fileutils.SaveAppState(state)
 	return nil
 }
 
-func DeleteInstance(name string) error {
-	state, err := fileutils.LoadAppState()
-	if err != nil {
-		return err
-	}
+func DeleteInstance(name string) {
+	state := fileutils.LoadAppState()
 
 	list := state.Instances
 	for i, instance := range list {
 		if strings.EqualFold(instance.Name, name) { 
-			err1 := fileutils.RemoveProfile(name)
-			if err1 != nil {
-				return err1
-			}
-
-			err2 := os.RemoveAll(instance.Path)
-			if err2 != nil {
-				return err2
-			}
-
-			err3 := SetActiveInstance("")
-			if err3 != nil {
-				return err3
-			}
+			util.Fatal(fileutils.RemoveProfile(name))
+			util.Fatal(os.RemoveAll(instance.Path))
+			SetActiveInstance("")
 
 			//Remove Item
 			list[i] = list[len(list)-1]
@@ -95,14 +67,11 @@ func DeleteInstance(name string) error {
 			break
 		}
 	}
-	return fileutils.SaveAppState(state)
+	fileutils.SaveAppState(state)
 }
 
 func GetInstance(name string) (i util.Instance, e error) {
-	state, err := fileutils.LoadAppState()
-	if err != nil {
-		return util.Instance{}, err
-	}
+	state := fileutils.LoadAppState()
 
 	for _, instance := range state.Instances {
 		if strings.EqualFold(instance.Name, name) {
@@ -113,15 +82,13 @@ func GetInstance(name string) (i util.Instance, e error) {
 }
 
 func SaveInstance(instance util.Instance) error {
-	state, err := fileutils.LoadAppState()
-	if err != nil {
-		return err
-	}
+	state := fileutils.LoadAppState()
 
 	for i, in := range state.Instances {
 		if instance.Name == in.Name {
 			state.Instances[i] = instance
-			return fileutils.SaveAppState(state)
+			fileutils.SaveAppState(state)
+			return nil
 		}
 	}
 	return errors.New("failed to find instance")
@@ -159,9 +126,7 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData) error {
 	fileutils.DownloadFile(modData.Url, file)
 	//putils.DownloadFileWithDefaultProgressbar(modData.Filename, instance.Path, modData.Url, 0700)
 	modJson, err2 := fileutils.GetModJsonFromJar(file)
-	if err2 != nil {
-		return err2
-	}
+	util.Fatal(err2)
 
 	modData.Version = modJson.Version
 	instance.Mods = append(instance.Mods, modData)
@@ -169,41 +134,27 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData) error {
 }
 
 //Must call SaveInstanceData after using! - this allows for batching mod removals into one file write call
-func RemoveMod(instance *util.Instance, id string) error {
+func RemoveMod(instance *util.Instance, id string)  {
 	mods := instance.Mods
 	for i, mod := range mods {
 		if mod.Id == id {
-			err := os.Remove(instance.Path + "/" + mod.Filename)
-			if err != nil {
-				return err
-			}
+			util.Fatal(os.Remove(instance.Path + "/" + mod.Filename))
 
 			//Remove item
 			mods[i] = mods[len(mods)-1]
     		instance.Mods = mods[:len(mods)-1]
-			fmt.Println("Uninstalled " + mod.Name)
-			return nil
+			pterm.Success.Println("Uninstalled " + mod.Name)
 		}
 	}
-	return errors.New("no mod found")
 }
 
-func SetActiveInstance(name string) error {
-	state, err := fileutils.LoadAppState()
-	if err != nil {
-		return err
-	}
-
+func SetActiveInstance(name string) {
+	state := fileutils.LoadAppState()
 	state.ActiveInstance = name
-	return fileutils.SaveAppState(state)
+	fileutils.SaveAppState(state)
 }
 
-func UpdateInstance(name string) error {
-	state, err := fileutils.LoadAppState()
-	if err != nil {
-		return err
-	}
-
+func UpdateInstance(state *fileutils.State, name string) {
 	var instance util.Instance
 	for _, i := range state.Instances {
 		if strings.EqualFold(i.Name, name) {
@@ -211,24 +162,14 @@ func UpdateInstance(name string) error {
 			break
 		}
 	}
-
+	
 	flVersion, err1 := api.GetLatestFabricLoaderVersion()
-	if err1 != nil {
-		return err1
-	}
-
-	//Update fabric installer
-	err2 := api.InstallOrUpdateFabricInstaller()
-	if err2 != nil {
-		return err2
-	}
+	util.Fatal(err1)
+	api.InstallOrUpdateFabricInstaller()
 
 	//Update fabric loader
 	if semver.Compare(instance.FabricLoaderVersion, flVersion) == -1 {
-		err3 := api.InstallFabricLoader(&state, instance.Version, flVersion)
-		if err3 != nil {
-			return err3
-		}
+		api.InstallFabricLoader(state, instance.Version, flVersion)
 		instance.FabricLoaderVersion = flVersion
 	}
 
@@ -237,51 +178,13 @@ func UpdateInstance(name string) error {
 		var modData util.ModData
 		if mod.Platform == "modrinth" {
 			modData, err4 := api.GetModrinthModData(modData.Slug, instance.Version)
-			if err4 != nil {
-				return err4
-			}
+			util.Fatal(err4)
 
 			if mod.Id != modData.Id {
-				err5 := RemoveMod(&instance, mod.Id)
-				if err5 != nil {
-					return err5
-				}
-
-				err6 := AddMod(&instance, "", modData)
-				if err6 != nil {
-					return err6
-				}
+				RemoveMod(&instance, mod.Id)
+				util.Fatal(AddMod(&instance, "", modData))
 			}
 		}
 	}	
-	return fileutils.SaveAppState(state)
-}
-
-func MigrateInstanceToVersion(name string, version string) error {
-	err := CreateInstance(name + "_Migrated", version)
-	if err != nil {
-		return err
-	}
-
-	oldInstance, err1 := GetInstance(name)
-	if err1 != nil {
-		return err1
-	}
-
-	newInstance, err2 := GetInstance(name + "_Migrated")
-	if err2 != nil {
-		return err2
-	}
-
-	for _, mod := range oldInstance.Mods {
-		err2 := AddMod(&newInstance, mod.Slug, util.ModData{})
-		if err2 != nil {
-			if err2.Error() == "failed to get mod data" {
-				fmt.Println(mod.Name + " does not have a version for " + version)
-			} else {
-				return err2
-			}
-		}
-	}
-	return SaveInstance(newInstance)
+	util.Fatal(SaveInstance(instance))
 }

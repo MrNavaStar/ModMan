@@ -1,5 +1,7 @@
 package util
 
+import "github.com/pterm/pterm"
+
 func Contains(list []string, str string) bool {
 	for _, v := range list {
 		if v == str {
@@ -9,7 +11,8 @@ func Contains(list []string, str string) bool {
 	return false
 }
 
-func Remove(list []interface{}, i int) []interface{} {
-    list[i] = list[len(list)-1]
-    return list[:len(list)-1]
+func Fatal(err error) {
+	if err != nil {
+		pterm.Fatal.Println(err)
+	}
 }

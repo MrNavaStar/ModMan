@@ -27,15 +27,12 @@ type modrinthVersion struct {
 func GetModrinthModData(slug string, version string) (m util.ModData, e error) {
 	var project modrinthProject
 	var versions []modrinthVersion
+	
 	_, err := client.R().SetResult(&project).Get(MODRINTH_API_BASE + "/project/" + slug)
-	if err != nil {
-		return util.ModData{}, err
-	}
+	util.Fatal(err)
 
 	_, err1 := client.R().SetResult(&versions).Get(MODRINTH_API_BASE + "/project/" + slug + "/version")
-	if err1 != nil {
-		return util.ModData{}, err1
-	}
+	util.Fatal(err1)
 	
 	for _, modVersion := range versions {
 		if util.Contains(modVersion.Loaders, "fabric") && util.Contains(modVersion.Game_versions, version) {
@@ -61,9 +58,7 @@ type searchResult struct {
 
 func SearchModrinth(query string) (s string, e error) {
 	resp, err := client.NewRequest().Get(MODRINTH_API_BASE + "/search?query=" + query)
-	if err != nil {
-		return "", err
-	}
+	util.Fatal(err)
 
 	var search searchResult
 	json.Unmarshal([]byte(resp.String()), &search)

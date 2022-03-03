@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
@@ -32,9 +31,7 @@ func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 	if  _, err := strconv.Atoi(slug); err != nil {
 		var curseProjects []curseProject
 		_, err1 := client.R().SetResult(&curseProjects).SetHeader("content-type", "application/json").Get("https://addons-ecs.forgesvc.net/api/v2/addon/search?gameId=432&searchfilter=" + slug)
-		if err1 != nil {
-			log.Fatal(err1)
-		}
+		util.Fatal(err1)
 
 		for _, p := range curseProjects {
 			if p.Slug == slug {
@@ -42,17 +39,13 @@ func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 			}
 		}
 	} else {
-		_, err := client.R().SetResult(&project).Get("https://addons-ecs.forgesvc.net/api/v2/addon/" + slug)
-		if err != nil {
-			log.Fatal(err)
-		}
+		_, err1 := client.R().SetResult(&project).Get("https://addons-ecs.forgesvc.net/api/v2/addon/" + slug)
+		util.Fatal(err1)
 	}
 
 	var files []file
 	_, err1 := client.R().SetResult(&files).Get("https://addons-ecs.forgesvc.net/api/v2/addon/" + fmt.Sprint(project.Id) + "/files")
-	if err1 != nil {
-		log.Fatal(err1)
-	}
+	util.Fatal(err1)
 
 	var file file
 	var date time.Time
@@ -62,9 +55,7 @@ func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 				for _, v := range f.GameVersion {
 					if v == version {
 						t, err2 := time.Parse(time.RFC3339, f.GameVersionDateReleased)
-						if err2 != nil {
-							log.Fatal(err2)
-						}
+						util.Fatal(err2)
 
 						if date.Before(t) {
 							file = f

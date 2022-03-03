@@ -3,9 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/mrnavastar/modman/api"
@@ -42,10 +42,7 @@ func main() {
 					workingDir = strings.Replace(workingDir, "\n", "", -1)
 					
 					fileutils.Setup(workingDir)
-					err := api.InstallOrUpdateFabricInstaller()
-					if err != nil {
-						return err
-					}
+					api.InstallOrUpdateFabricInstaller()
 					pterm.Success.Println("Setup complete")
 					return nil
 				},
@@ -55,10 +52,7 @@ func main() {
 				Aliases: []string{"list"},
 				Usage:   "List all instances",
 				Action:  func(c *cli.Context) error {
-					state, err := fileutils.LoadAppState()
-					if err != nil {
-						return err
-					}
+					state := fileutils.LoadAppState()
 
 					if len(state.Instances) == 0 {
 						return nil
@@ -91,10 +85,6 @@ func main() {
 						pterm.Error.Println("Instance with that name already exists")
 						return nil
 					}
-
-					if err.Error() != "failed to find instance" {
-						return err
-					} 
 					
 					if version == "" {
 						version = api.GetLatestMcVersion()
@@ -103,11 +93,13 @@ func main() {
 					pterm.Info.Println("Creating " + name)
 					err1 := services.CreateInstance(name, version)
 					if err1 != nil {
-						return err1
+						pterm.Println("Instance with that name already exists")
+						return nil
 					}
 
 					pterm.Success.Println("Created " + name)
-					return services.SetActiveInstance(name)
+					services.SetActiveInstance(name)
+					return nil
 				},
 			},
 			{
@@ -116,11 +108,13 @@ func main() {
 				Action: func(c *cli.Context) error {
 					instance, err := services.GetInstance(c.Args().Get(0))
 					if err != nil {
-						return err
+						pterm.Error.Println("No instance with that name")
+						return nil
 					}
 
 					pterm.Info.Println("Now modifying " + instance.Name)
-					return services.SetActiveInstance(instance.Name)
+					services.SetActiveInstance(instance.Name)
+					return nil
 				},
 			},
 			{
@@ -131,11 +125,8 @@ func main() {
 					args := c.Args()
 					_, err := services.GetInstance(args.Get(0))
 					if err != nil {
-						if err.Error() == "failed to find instance" {
-							pterm.Error.Println("Failed to find an instance with that name")
-							return nil
-						}
-						return err
+						pterm.Error.Println("Failed to find an instance with that name")
+						return nil
 					}
 
 					reader := bufio.NewReader(os.Stdin)
@@ -144,10 +135,7 @@ func main() {
 					input = strings.Replace(input, "\n", "", -1)
 
 					if input == "y" || input == "Y" {
-						err1 := services.DeleteInstance(args.Get(0))
-						if err1 != nil {
-							return err1
-						}
+						services.DeleteInstance(args.Get(0))
 						pterm.Success.Println("Removed " + args.Get(0))
 					} else {
 						pterm.Warning.Println("Action canceled")
@@ -160,14 +148,12 @@ func main() {
 				Usage: "Install mods",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
-					state, err := fileutils.LoadAppState()
-					if err != nil {
-						return err
-					}
+					state := fileutils.LoadAppState()
 
 					instance, err1 := services.GetInstance(state.ActiveInstance)
 					if err1 != nil {
-						return err
+						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						return nil
 					} 
 					
 					var retrymods []failedMod
@@ -190,8 +176,7 @@ func main() {
 
 							if err2.Error() == "failed to get mod data" {
 								slug, err3 := api.SearchModrinth(mod)
-								if err3 != nil && err3.Error() == "no mod found" {
-									fmt.Println("Could not find mod under " + mod)
+								if err3 != nil {
 									continue
 								}
 
@@ -214,9 +199,11 @@ func main() {
 
 						if input == "Y" || input == "y" || input == "" {
 							err3 := services.AddMod(&instance, mod.Slug, util.ModData{})
-							if err3 != nil && err3.Error() == "mod already added"{
-								pterm.Error.Println(mod.Slug + " has already been added")
-								continue
+							if err3 != nil {
+								if err3.Error() == "mod already added" {
+									pterm.Error.Println(mod.Slug + " has already been added")
+									continue
+								} 
 							}
 							pterm.Success.Println("Installed " + mod.Slug)
 						}
@@ -229,27 +216,18 @@ func main() {
 				Usage: "Uninstall mods",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
-					state, err := fileutils.LoadAppState()
-					if err != nil {
-						return err
-					}
+					state := fileutils.LoadAppState()
 
 					instance, err1 := services.GetInstance(state.ActiveInstance)
 					if err1 != nil {
-						return err
-					}
+						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						return nil
+					} 
 
 					for _, mod := range args.Slice() {
 						for _, modData := range instance.Mods {
 							if strings.EqualFold(modData.Name, mod) || strings.EqualFold(modData.Slug, mod) {
-								err2 := services.RemoveMod(&instance, modData.Id)
-								if err2 != nil {
-									if err2.Error() == "no mod found" {
-										continue
-									} else {
-										return err2
-									}
-								}
+								services.RemoveMod(&instance, modData.Id)
 							}
 						}
 					}
@@ -260,14 +238,12 @@ func main() {
 				Name: "lsmod",
 				Usage: "list mods installed on the active instance",
 				Action: func(c *cli.Context) error {
-					state, err := fileutils.LoadAppState()
-					if err != nil {
-						return err
-					}
+					state := fileutils.LoadAppState()
 
 					instance, err1 := services.GetInstance(state.ActiveInstance)
 					if err1 != nil {
-						return err
+						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						return nil
 					}
 
 					if len(instance.Mods) == 0 { 
@@ -289,14 +265,18 @@ func main() {
 				Name: "update",
 				Usage: "update an instance",
 				Action: func(c *cli.Context) error {
-					state, err := fileutils.LoadAppState()
+					state := fileutils.LoadAppState()
+
+					instance, err := services.GetInstance(state.ActiveInstance)
 					if err != nil {
-						return err
+						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						return nil
 					}
 
-					pterm.Info.Println("Updating " + state.ActiveInstance)
-					services.UpdateInstance(state.ActiveInstance)
-					pterm.Success.Println("Done.")
+					pterm.Info.Println("Updating " + instance.Name)
+					services.UpdateInstance(&state, instance.Name)
+					fileutils.SaveAppState(state)
+					pterm.Success.Println("Update complete")
 					return nil
 				},
 			},
@@ -304,18 +284,36 @@ func main() {
 				Name: "migrate",
 				Usage: "migrate an instance to a newer game version",
 				Action: func(c *cli.Context) error {
-					state, err := fileutils.LoadAppState()
+					state := fileutils.LoadAppState()
+					version := c.Args().Get(0)
+
+					oldInstance, err := services.GetInstance(state.ActiveInstance)
 					if err != nil {
-						return err
-					} 
-					
-					pterm.Info.Println("Migrating " + state.ActiveInstance + " to " + c.Args().Get(0))
-					err1 := services.MigrateInstanceToVersion(state.ActiveInstance, c.Args().Get(0))
-					if err1 != nil {
-						return err1
+						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						return nil
 					}
+
+					pterm.Info.Println("Migrating " + state.ActiveInstance + " to " + c.Args().Get(0))
+					newName := oldInstance.Name + "_Migrated"
+					err1 := services.CreateInstance(newName, version)
+					if err1 != nil {
+						newName = oldInstance.Name + "_Migrated_at_" + time.Now().String()
+						services.CreateInstance(newName, version)
+					}
+
+					newInstance, _ := services.GetInstance(newName)
+
+					for _, mod := range oldInstance.Mods {
+						err2 := services.AddMod(&newInstance, mod.Slug, util.ModData{})
+						if err2 != nil {
+							pterm.Error.Println(mod.Name + " does not have a version for " + version)
+						}
+					}
+
+					util.Fatal(services.SaveInstance(newInstance))
+					services.SetActiveInstance(newName)
 					pterm.Success.Println("Migration Complete")
-					return services.SetActiveInstance(state.ActiveInstance + "_Migrated")
+					return nil
 				},
 			},
 		},
@@ -323,6 +321,6 @@ func main() {
 	
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		util.Fatal(err)
 	}
 }
