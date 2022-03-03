@@ -11,6 +11,7 @@ import (
 	"github.com/mrnavastar/modman/api"
 	"github.com/mrnavastar/modman/util"
 	"github.com/mrnavastar/modman/util/fileutils"
+	//"github.com/pterm/pterm/putils"
 	"golang.org/x/mod/semver"
 )
 
@@ -156,6 +157,7 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData) error {
 
 	file := instance.Path + "/" + modData.Filename
 	fileutils.DownloadFile(modData.Url, file)
+	//putils.DownloadFileWithDefaultProgressbar(modData.Filename, instance.Path, modData.Url, 0700)
 	modJson, err2 := fileutils.GetModJsonFromJar(file)
 	if err2 != nil {
 		return err2

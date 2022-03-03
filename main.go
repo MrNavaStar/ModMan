@@ -1,16 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/jedib0t/go-pretty/text"
+	"github.com/common-nighthawk/go-figure"
 	"github.com/mrnavastar/modman/api"
 	"github.com/mrnavastar/modman/services"
 	"github.com/mrnavastar/modman/util"
 	"github.com/mrnavastar/modman/util/fileutils"
+	"github.com/pterm/pterm"
 	"github.com/urfave/cli/v2"
 )
 
@@ -28,12 +30,23 @@ func main() {
 				Name: "init",
 				Usage: "Setup modman on your system",
 				Action: func(c *cli.Context) error {
-					fileutils.Setup(c.Args().Get(0))
+					pterm.DefaultCenter.Println(pterm.FgLightCyan.Sprint(figure.NewFigure("ModMan", "speed", true)))
+
+					pterm.DefaultCenter.Print(pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgGreen)).WithMargin(10).Sprint("V1.0 - Created By MrNavaStar"))
+					pterm.DefaultCenter.WithCenterEachLineSeparately().Println("Welcome!\nHelp contribute to this project over at:\nGit: https://github.com/MrNavaStar/ModMan\nIssues: https://github.com/MrNavaStar/ModMan/issues")
+					
+					reader := bufio.NewReader(os.Stdin)
+					pterm.Info.Println("Enter the path to your .minecraft folder:")
+					pterm.FgDarkGray.Print(">>> ")
+					workingDir, _ := reader.ReadString('\n')
+					workingDir = strings.Replace(workingDir, "\n", "", -1)
+					
+					fileutils.Setup(workingDir)
 					err := api.InstallOrUpdateFabricInstaller()
 					if err != nil {
 						return err
 					}
-					fmt.Println("Done.")
+					pterm.Success.Println("Setup complete")
 					return nil
 				},
 			},
@@ -51,22 +64,18 @@ func main() {
 						return nil
 					}
 
-					lname := 0
-					lversion := 0
-					for _, instance := range state.Instances {
-						if len(instance.Name) > lname {
-							lname = len(instance.Name)
-						}
-						if len(instance.Version) > lversion {
-							lversion = len(instance.Version)
-						}
-					}
-
 					fmt.Println()
-					fmt.Println(text.AlignDefault.Apply("NAME:", lname +2) + text.AlignDefault.Apply("VERSION:", lversion))
+					var instances [][]string
+					instances = append(instances, []string{" ", "Name", "Version", "Mods"})
 					for _, instance := range state.Instances {
-						fmt.Println(text.AlignDefault.Apply(text.Bold.Sprintf(instance.Name), lname +2) + text.AlignDefault.Apply(instance.Version, lversion))
+						var prefix string
+						if state.ActiveInstance == instance.Name {
+							prefix = ">"
+						}
+
+						instances = append(instances, []string{prefix, instance.Name, instance.Version, fmt.Sprint(len(instance.Mods))})
 					}
+					pterm.DefaultTable.WithHasHeader().WithData(pterm.TableData(instances)).Render()
 					fmt.Println()
 					return nil
 				},
@@ -79,7 +88,7 @@ func main() {
 					version := c.Args().Get(1)
 					_, err := services.GetInstance(name)
 					if err == nil {
-						fmt.Println("Instance with that name already exists")
+						pterm.Error.Println("Instance with that name already exists")
 						return nil
 					}
 
@@ -88,16 +97,16 @@ func main() {
 					} 
 					
 					if version == "" {
-						version = "1.18.2"
+						version = api.GetLatestMcVersion()
 					}
 
-					fmt.Println("Creating " + name)
+					pterm.Info.Println("Creating " + name)
 					err1 := services.CreateInstance(name, version)
 					if err1 != nil {
 						return err1
 					}
 
-					fmt.Println("Done.")
+					pterm.Success.Println("Created " + name)
 					return services.SetActiveInstance(name)
 				},
 			},
@@ -110,7 +119,7 @@ func main() {
 						return err
 					}
 
-					fmt.Println("Now modifying " + instance.Name)
+					pterm.Info.Println("Now modifying " + instance.Name)
 					return services.SetActiveInstance(instance.Name)
 				},
 			},
@@ -123,17 +132,26 @@ func main() {
 					_, err := services.GetInstance(args.Get(0))
 					if err != nil {
 						if err.Error() == "failed to find instance" {
-							fmt.Println("Failed to find an instance with that name")
+							pterm.Error.Println("Failed to find an instance with that name")
 							return nil
 						}
 						return err
 					}
 
-					err1 := services.DeleteInstance(args.Get(0))
-					if err1 != nil {
-						return err1
+					reader := bufio.NewReader(os.Stdin)
+					pterm.Info.Print("Are you sure? [y/N]: ")
+					input, _ := reader.ReadString('\n')
+					input = strings.Replace(input, "\n", "", -1)
+
+					if input == "y" || input == "Y" {
+						err1 := services.DeleteInstance(args.Get(0))
+						if err1 != nil {
+							return err1
+						}
+						pterm.Success.Println("Removed " + args.Get(0))
+					} else {
+						pterm.Warning.Println("Action canceled")
 					}
-					fmt.Println("Removed " + args.Get(0))
 					return nil
 				},
 			},
@@ -166,7 +184,7 @@ func main() {
 						err2 := services.AddMod(&instance, prefix + mod, util.ModData{})
 						if err2 != nil {
 							if err2.Error() == "mod already added" {
-								fmt.Println(mod + " has already been added")
+								pterm.Error.Println(mod + " has already been added")
 								continue
 							}
 
@@ -184,22 +202,23 @@ func main() {
 								continue
 							}
 						}
-						fmt.Println("Installed " + mod)
+						pterm.Success.Println("Installed " + mod)
 					}
 
 					for _, mod := range retrymods {
-						var input string
-						fmt.Println("Failed to find mod under " + mod.UserIn)
-						fmt.Println("Would you like to try under " + mod.Slug + "? [Y/n]: ")
-						fmt.Scanln(&input)
+						pterm.Error.Println("Failed to find mod under " + mod.UserIn)
+						reader := bufio.NewReader(os.Stdin)
+						pterm.Info.Print("Would you like to try under " + mod.Slug + "? [Y/n]: ")
+						input, _ := reader.ReadString('\n')
+						input = strings.Replace(input, "\n", "", -1)
 
 						if input == "Y" || input == "y" || input == "" {
 							err3 := services.AddMod(&instance, mod.Slug, util.ModData{})
 							if err3 != nil && err3.Error() == "mod already added"{
-								fmt.Println(mod.Slug + " has already been added")
+								pterm.Error.Println(mod.Slug + " has already been added")
 								continue
 							}
-							fmt.Println("Installed " + mod.Slug)
+							pterm.Success.Println("Installed " + mod.Slug)
 						}
 					}
 					return services.SaveInstance(instance)
@@ -254,27 +273,14 @@ func main() {
 					if len(instance.Mods) == 0 { 
 						return nil
 					}
-
-					lname := 0
-					lfname := 0
-					lversion := 0
-					for _, mod := range instance.Mods {
-						if len(mod.Name) > lname {
-							lname = len(mod.Name)
-						}
-						if len(mod.Filename) > lfname {
-							lfname = len(mod.Filename)
-						}
-						if len(mod.Version) > lversion {
-							lversion = len(mod.Version)
-						}
-					}
 					
 					fmt.Println()
-					fmt.Println(text.AlignDefault.Apply("NAME:", lname + 2) + text.AlignDefault.Apply("VERSION:", lversion + 2) + text.AlignDefault.Apply("FILENAME:", lfname))
+					var mods [][]string
+					mods = append(mods, []string{"Name", "Version", "Filename"})
 					for _, mod := range instance.Mods {
-						fmt.Println(text.AlignDefault.Apply(text.Bold.Sprint(mod.Name), lname + 2) + text.AlignDefault.Apply(text.Underline.Sprint(mod.Version), lversion + 2) + text.AlignDefault.Apply(mod.Filename, lfname))
+						mods = append(mods, []string{mod.Name, mod.Version, mod.Filename})
 					}
+					pterm.DefaultTable.WithHasHeader().WithData(pterm.TableData(mods)).Render()
 					fmt.Println()
 					return nil
 				},
@@ -288,9 +294,9 @@ func main() {
 						return err
 					}
 
-					fmt.Println("Updating " + state.ActiveInstance)
+					pterm.Info.Println("Updating " + state.ActiveInstance)
 					services.UpdateInstance(state.ActiveInstance)
-					fmt.Println("Done.")
+					pterm.Success.Println("Done.")
 					return nil
 				},
 			},
@@ -303,12 +309,12 @@ func main() {
 						return err
 					} 
 					
-					fmt.Println("Migrating " + state.ActiveInstance + " to " + c.Args().Get(0))
+					pterm.Info.Println("Migrating " + state.ActiveInstance + " to " + c.Args().Get(0))
 					err1 := services.MigrateInstanceToVersion(state.ActiveInstance, c.Args().Get(0))
 					if err1 != nil {
 						return err1
 					}
-					fmt.Println("Done.")
+					pterm.Success.Println("Migration Complete")
 					return services.SetActiveInstance(state.ActiveInstance + "_Migrated")
 				},
 			},
