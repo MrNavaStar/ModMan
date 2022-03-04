@@ -38,10 +38,10 @@ func main() {
 					reader := bufio.NewReader(os.Stdin)
 					pterm.Info.Println("Enter the path to your .minecraft folder:")
 					pterm.FgDarkGray.Print(">>> ")
-					workingDir, _ := reader.ReadString('\n')
-					workingDir = strings.Replace(workingDir, "\n", "", -1)
+					workDir, _ := reader.ReadString('\n')
+					workDir = strings.Replace(workDir, "\n", "", -1)
 					
-					fileutils.Setup(workingDir)
+					fileutils.Setup(workDir)
 					api.InstallOrUpdateFabricInstaller()
 					pterm.Success.Println("Setup complete")
 					return nil
@@ -354,9 +354,5 @@ func main() {
 			},
 		},
 	}
-	
-	err := app.Run(os.Args)
-	if err != nil {
-		util.Fatal(err)
-	}
+	util.Fatal(app.Run(os.Args))
 }
