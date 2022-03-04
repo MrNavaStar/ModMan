@@ -167,10 +167,10 @@ func main() {
 							continue
 						}
 
-						err2 := services.AddMod(&instance, prefix + mod, util.ModData{})
+						err2 := services.AddMod(&instance, prefix + mod, util.ModData{}, false, false)
 						if err2 != nil {
 							if err2.Error() == "mod already added" {
-								pterm.Error.Println(mod + " has already been added")
+								pterm.Info.Println(mod + " has already been added")
 								continue
 							}
 
@@ -187,7 +187,6 @@ func main() {
 								continue
 							}
 						}
-						pterm.Success.Println("Installed " + mod)
 					}
 
 					for _, mod := range retrymods {
@@ -198,7 +197,7 @@ func main() {
 						input = strings.Replace(input, "\n", "", -1)
 
 						if input == "Y" || input == "y" || input == "" {
-							err3 := services.AddMod(&instance, mod.Slug, util.ModData{})
+							err3 := services.AddMod(&instance, mod.Slug, util.ModData{}, false, false)
 							if err3 != nil {
 								if err3.Error() == "mod already added" {
 									pterm.Error.Println(mod.Slug + " has already been added")
@@ -304,9 +303,11 @@ func main() {
 					newInstance, _ := services.GetInstance(newName)
 
 					for _, mod := range oldInstance.Mods {
-						err2 := services.AddMod(&newInstance, mod.Id, util.ModData{})
-						if err2 != nil {
-							pterm.Error.Println(mod.Name + " does not have a version for " + version)
+						if !mod.IsADependency { 
+							err2 := services.AddMod(&newInstance, mod.ProjectId, util.ModData{}, false, false)
+							if err2 != nil {
+								pterm.Error.Println(mod.Name + " does not have a version for " + version)
+							}
 						}
 					}
 

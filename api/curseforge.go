@@ -24,13 +24,18 @@ type file struct {
 	Modules []struct {
 		Foldername string
 	}
+	Dependencies []struct {
+		AddonId int
+	}
 }
+
+var CURSE_API_BASE = "https://addons-ecs.forgesvc.net/api/v2"
 
 func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 	var project curseProject
 	if  _, err := strconv.Atoi(slug); err != nil {
 		var curseProjects []curseProject
-		_, err1 := client.R().SetResult(&curseProjects).SetHeader("content-type", "application/json").Get("https://addons-ecs.forgesvc.net/api/v2/addon/search?gameId=432&searchfilter=" + slug)
+		_, err1 := client.R().SetResult(&curseProjects).SetHeader("content-type", "application/json").Get(CURSE_API_BASE + "/addon/search?gameId=432&searchfilter=" + slug)
 		util.Fatal(err1)
 
 		for _, p := range curseProjects {
@@ -39,12 +44,12 @@ func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 			}
 		}
 	} else {
-		_, err1 := client.R().SetResult(&project).Get("https://addons-ecs.forgesvc.net/api/v2/addon/" + slug)
+		_, err1 := client.R().SetResult(&project).Get(CURSE_API_BASE + "/addon/" + slug)
 		util.Fatal(err1)
 	}
 
 	var files []file
-	_, err1 := client.R().SetResult(&files).Get("https://addons-ecs.forgesvc.net/api/v2/addon/" + fmt.Sprint(project.Id) + "/files")
+	_, err1 := client.R().SetResult(&files).Get(CURSE_API_BASE + "/addon/" + fmt.Sprint(project.Id) + "/files")
 	util.Fatal(err1)
 
 	var file file
@@ -73,10 +78,15 @@ func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 	
 	var modData util.ModData
 	modData.Platform = "curse"
+	modData.ProjectId = fmt.Sprint(project.Id)
 	modData.Id = fmt.Sprint(file.Id)
 	modData.Name = project.Name
 	modData.Slug = project.Slug
 	modData.Url = file.DownloadUrl
 	modData.Filename = file.FileName
+	
+	for _, mod := range file.Dependencies {
+		modData.Dependencies = append(modData.Dependencies, fmt.Sprint(mod.AddonId))
+	}
 	return modData, nil
 }

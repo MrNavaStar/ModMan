@@ -12,6 +12,7 @@ var MODRINTH_API_BASE = "https://api.modrinth.com/v2"
 
 type modrinthProject struct {
 	Title string
+	Id string
 }
 
 type modrinthVersion struct {
@@ -21,6 +22,9 @@ type modrinthVersion struct {
 	Files []struct {
 		Url string
 		Filename string
+	}
+	Dependencies []struct {
+		Project_id string
 	}
 }
 
@@ -39,10 +43,16 @@ func GetModrinthModData(slug string, version string) (m util.ModData, e error) {
 			var modData util.ModData
 			modData.Platform = "modrinth"
 			modData.Slug = slug
+			modData.ProjectId = project.Id
 			modData.Id = modVersion.Id
 			modData.Name = strings.Replace(project.Title, " ", "-", -1)
 			modData.Url = modVersion.Files[0].Url
 			modData.Filename = modVersion.Files[0].Filename
+
+			for _, mod := range modVersion.Dependencies {
+				modData.Dependencies = append(modData.Dependencies, mod.Project_id)
+			}
+
 			return modData, nil
 		}
 	}

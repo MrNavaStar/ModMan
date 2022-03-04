@@ -4,10 +4,13 @@ type ModData struct {
 	Platform string
 	Slug string
 	Name string
+	ProjectId string
 	Id string
 	Version string
 	Url string
 	Filename string
+	Dependencies []string
+	IsADependency bool
 }
 
 type Instance struct {

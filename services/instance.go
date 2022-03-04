@@ -46,7 +46,7 @@ func CreateInstance(name string, version string) error {
 	profile.LastVersionId = "fabric-loader-" + instance.FabricLoaderVersion + "-" + version
 	profile.JavaArgs = "-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfabric.addMods=" + instance.Path
 	
-	util.Fatal(fileutils.AddProfile(profile))
+	fileutils.AddProfile(profile)
 	fileutils.SaveAppState(state)
 	return nil
 }
@@ -57,7 +57,7 @@ func DeleteInstance(name string) {
 	list := state.Instances
 	for i, instance := range list {
 		if strings.EqualFold(instance.Name, name) { 
-			util.Fatal(fileutils.RemoveProfile(name))
+			fileutils.RemoveProfile(name)
 			util.Fatal(os.RemoveAll(instance.Path))
 			SetActiveInstance("")
 
@@ -95,7 +95,7 @@ func SaveInstance(instance util.Instance) error {
 }
 
 //Must call SaveInstance after using! - this allows for batching mod installs into one file write call
-func AddMod(instance *util.Instance, arg string, modData util.ModData) error {
+func AddMod(instance *util.Instance, arg string, modData util.ModData, isDep bool, isUpdate bool) error {
 	slug := strings.Replace(arg, "c=", "", -1)
 
 	if modData.Id == "" {
@@ -124,12 +124,24 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData) error {
 
 	file := instance.Path + "/" + modData.Filename
 	fileutils.DownloadFile(modData.Url, file)
-	//putils.DownloadFileWithDefaultProgressbar(modData.Filename, instance.Path, modData.Url, 0700)
-	modJson, err2 := fileutils.GetModJsonFromJar(file)
-	util.Fatal(err2)
+	modJson, err := fileutils.GetModJsonFromJar(file)
+	util.Fatal(err)
 
 	modData.Version = modJson.Version
+	modData.IsADependency = isDep
 	instance.Mods = append(instance.Mods, modData)
+	
+	if !isUpdate {
+		pterm.Success.Println("Installed " + modData.Name)
+		for _, project := range modData.Dependencies {
+			err := AddMod(instance, project, util.ModData{}, true, false)
+			if err != nil && err.Error() == "failed to get mod data" {
+				pterm.Error.Println("Failed to download dependency for " + modData.Name + ":" + project)
+			}
+		}
+	} else {
+		pterm.Success.Println("Updated " + modData.Name)
+	}
 	return nil
 }
 
@@ -163,9 +175,9 @@ func UpdateInstance(state *fileutils.State, name string) {
 		}
 	}
 	
+	api.InstallOrUpdateFabricInstaller()
 	flVersion, err := api.GetLatestFabricLoaderVersion()
 	util.Fatal(err)
-	api.InstallOrUpdateFabricInstaller()
 
 	//Update fabric loader
 	if semver.Compare(instance.FabricLoaderVersion, flVersion) == -1 {
@@ -177,19 +189,24 @@ func UpdateInstance(state *fileutils.State, name string) {
 	for _, mod := range instance.Mods {
 		var modData util.ModData
 		if mod.Platform == "modrinth" {
-			modData, err1 := api.GetModrinthModData(modData.Slug, instance.Version)
-			if err1 == nil && mod.Id != modData.Id {
-				RemoveMod(&instance, mod.Id)
-				util.Fatal(AddMod(&instance, "", modData))
+			m, err := api.GetModrinthModData(modData.Slug, instance.Version)
+			if err != nil {
+				continue
 			}
+			modData = m
 		}
 
 		if mod.Platform == "curse" {
-			modData, err1 := api.GetCurseModData(modData.Slug, instance.Version)
-			if err1 == nil && mod.Id != modData.Id {
-				RemoveMod(&instance, mod.Id)
-				util.Fatal(AddMod(&instance, "", modData))
+			m, err := api.GetCurseModData(modData.Slug, instance.Version)
+			if err != nil {
+				continue
 			}
+			modData = m
+		}
+
+		if mod.Id != modData.Id {
+			RemoveMod(&instance, mod.Id)
+			util.Fatal(AddMod(&instance, "", modData, false, true))
 		}
 	}	
 	util.Fatal(SaveInstance(instance))

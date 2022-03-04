@@ -97,9 +97,8 @@ func GetModJsonFromJar(filepath string) (modJson ModJson, err error) {
 	return ModJson{}, errors.New("not a fabric mod")
 }
 
-func AddProfile(profile util.Profile) error {
+func AddProfile(profile util.Profile) {
 	state := LoadAppState()
-
 	profiles, err1 := ioutil.ReadFile(state.DotMinecraft + "/launcher_profiles.json")
 	util.Fatal(err1)
 
@@ -109,15 +108,14 @@ func AddProfile(profile util.Profile) error {
 	newProfiles, err3 := jsonparser.Set(profiles, data, "profiles", profile.Name)
 	util.Fatal(err3)
 
-	return ioutil.WriteFile(state.DotMinecraft + "/launcher_profiles.json", newProfiles, 0644)
+	util.Fatal(ioutil.WriteFile(state.DotMinecraft + "/launcher_profiles.json", newProfiles, 0644))
 }
 
-func RemoveProfile(name string) error {
+func RemoveProfile(name string) {
 	state := LoadAppState()
-
 	profiles, err1 := ioutil.ReadFile(state.DotMinecraft + "/launcher_profiles.json")
 	util.Fatal(err1)
 
 	newProfiles := jsonparser.Delete(profiles, "profiles", name)
-	return ioutil.WriteFile(state.DotMinecraft + "/launcher_profiles.json", newProfiles, 0644)
+	util.Fatal(ioutil.WriteFile(state.DotMinecraft + "/launcher_profiles.json", newProfiles, 0644))
 }
