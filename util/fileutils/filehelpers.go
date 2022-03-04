@@ -72,6 +72,10 @@ type ModJson struct {
 	Name string
 	Description string
 	Authors []string
+	Depends struct {
+		FabricLoader string
+		Fabric string
+	}
 }
 
 func GetModJsonFromJar(filepath string) (modJson ModJson, err error) {

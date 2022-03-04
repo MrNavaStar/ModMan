@@ -198,13 +198,11 @@ func main() {
 
 						if input == "Y" || input == "y" || input == "" {
 							err3 := services.AddMod(&instance, mod.Slug, util.ModData{}, false, false)
-							if err3 != nil {
-								if err3.Error() == "mod already added" {
-									pterm.Error.Println(mod.Slug + " has already been added")
-									continue
-								} 
+							if err3 != nil && err3.Error() == "mod already added" {		
+								pterm.Error.Println(mod.Slug + " has already been added")
+								continue	
 							}
-							pterm.Success.Println("Installed " + mod.Slug)
+							pterm.Error.Println(err3)
 						}
 					}
 					return services.SaveInstance(instance)

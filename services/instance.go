@@ -94,6 +94,15 @@ func SaveInstance(instance util.Instance) error {
 	return errors.New("failed to find instance")
 }
 
+func isModDownloaded(instance util.Instance, slug string) bool {
+	for _, mod := range instance.Mods {
+		if mod.Slug == slug {
+			return true
+		}
+	}
+	return false
+}
+
 //Must call SaveInstance after using! - this allows for batching mod installs into one file write call
 func AddMod(instance *util.Instance, arg string, modData util.ModData, isDep bool, isUpdate bool) error {
 	slug := strings.Replace(arg, "c=", "", -1)
@@ -115,11 +124,8 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isDep boo
 		}
 	}
 
-	//Check if mod has been added
-	for _, mod := range instance.Mods {
-		if modData.Name == mod.Name {
-			return errors.New("mod already added")
-		}
+	if isModDownloaded(*instance, modData.Slug) {
+		return errors.New("mod already added")
 	}
 
 	file := instance.Path + "/" + modData.Filename
@@ -133,10 +139,19 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isDep boo
 	
 	if !isUpdate {
 		pterm.Success.Println("Installed " + modData.Name)
+
+		//Check if mod requires fabric-api
+		if modJson.Depends.Fabric != "" && !isModDownloaded(*instance, "fabric-api") {
+			err := AddMod(instance, "fabric-api", util.ModData{}, true, false)
+			if err != nil {
+				pterm.Error.Println("Failed to download dependency for " + modData.Name + ": Fabric-API")
+			}
+		}
+
 		for _, project := range modData.Dependencies {
 			err := AddMod(instance, project, util.ModData{}, true, false)
 			if err != nil && err.Error() == "failed to get mod data" {
-				pterm.Error.Println("Failed to download dependency for " + modData.Name + ":" + project)
+				pterm.Error.Println("Failed to download dependency for " + modData.Name + ": " + project)
 			}
 		}
 	} else {
