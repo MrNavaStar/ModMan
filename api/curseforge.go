@@ -49,8 +49,12 @@ func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 	}
 
 	var files []file
-	_, err1 := client.R().SetResult(&files).Get(CURSE_API_BASE + "/addon/" + fmt.Sprint(project.Id) + "/files")
+	resp, err1 := client.R().SetResult(&files).Get(CURSE_API_BASE + "/addon/" + fmt.Sprint(project.Id) + "/files")
 	util.Fatal(err1)
+
+	if resp.StatusCode() != 200 {
+		return util.ModData{}, errors.New("invalid slug")
+	}
 
 	var file file
 	var date time.Time
@@ -73,7 +77,7 @@ func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 	}
 	
 	if file.DownloadUrl == "" {
-		return util.ModData{}, errors.New("failed to get mod data")
+		return util.ModData{}, errors.New("failed to find matching version")
 	}
 	
 	var modData util.ModData

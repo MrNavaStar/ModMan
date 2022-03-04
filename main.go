@@ -174,9 +174,10 @@ func main() {
 								continue
 							}
 
-							if err2.Error() == "failed to get mod data" {
+							if err2.Error() == "invalid slug" {
 								slug, err3 := api.SearchModrinth(mod)
 								if err3 != nil {
+									pterm.Error.Println("Could not find mod under " + mod)
 									continue
 								}
 
@@ -185,6 +186,10 @@ func main() {
 								failedMod.Slug = slug
 								retrymods = append(retrymods, failedMod)
 								continue
+							}
+
+							if err2.Error() == "failed to find matching version" {
+								pterm.Error.Println(mod + " does not have a release for " + instance.Version)
 							}
 						}
 					}

@@ -32,11 +32,15 @@ func GetModrinthModData(slug string, version string) (m util.ModData, e error) {
 	var project modrinthProject
 	var versions []modrinthVersion
 	
-	_, err := client.R().SetResult(&project).Get(MODRINTH_API_BASE + "/project/" + slug)
+	resp, err := client.R().SetResult(&project).Get(MODRINTH_API_BASE + "/project/" + slug)
 	util.Fatal(err)
 
-	_, err1 := client.R().SetResult(&versions).Get(MODRINTH_API_BASE + "/project/" + slug + "/version")
+	resp1, err1 := client.R().SetResult(&versions).Get(MODRINTH_API_BASE + "/project/" + slug + "/version")
 	util.Fatal(err1)
+
+	if resp.StatusCode() != 200 && resp1.StatusCode() != 200 {
+		return util.ModData{}, errors.New("invalid slug")
+	}
 	
 	for _, modVersion := range versions {
 		if util.Contains(modVersion.Loaders, "fabric") && util.Contains(modVersion.Game_versions, version) {
@@ -56,7 +60,7 @@ func GetModrinthModData(slug string, version string) (m util.ModData, e error) {
 			return modData, nil
 		}
 	}
-	return util.ModData{}, errors.New("failed to get mod data")
+	return util.ModData{}, errors.New("failed to find matching version")
 }
 
 type searchResult struct {
