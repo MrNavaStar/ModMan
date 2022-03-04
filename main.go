@@ -32,7 +32,7 @@ func main() {
 				Action: func(c *cli.Context) error {
 					pterm.DefaultCenter.Println(pterm.FgLightCyan.Sprint(figure.NewFigure("ModMan", "speed", true)))
 
-					pterm.DefaultCenter.Print(pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgGreen)).WithMargin(10).Sprint("V1.0 - Created By MrNavaStar"))
+					pterm.DefaultCenter.Print(pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgGreen)).WithMargin(10).Sprint("V" + util.GetVersion() + " - Created By MrNavaStar"))
 					pterm.DefaultCenter.WithCenterEachLineSeparately().Println("Welcome!\nHelp contribute to this project over at:\nGit: https://github.com/MrNavaStar/ModMan\nIssues: https://github.com/MrNavaStar/ModMan/issues")
 					
 					reader := bufio.NewReader(os.Stdin)
@@ -340,6 +340,15 @@ func main() {
 					fileutils.SaveAppState(state)
 					services.SetActiveInstance(instance.Name)
 					pterm.Success.Println("Renamed " + oldName + " to " + instance.Name)
+					return nil
+				},
+			},
+			{
+				Name: "version",
+				Aliases: []string{"v"},
+				Usage: "Show modman version",
+				Action: func(c *cli.Context) error {
+					pterm.Info.Println("v" + util.GetVersion())
 					return nil
 				},
 			},
