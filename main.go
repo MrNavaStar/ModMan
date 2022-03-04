@@ -304,7 +304,7 @@ func main() {
 					newInstance, _ := services.GetInstance(newName)
 
 					for _, mod := range oldInstance.Mods {
-						err2 := services.AddMod(&newInstance, mod.Slug, util.ModData{})
+						err2 := services.AddMod(&newInstance, mod.Id, util.ModData{})
 						if err2 != nil {
 							pterm.Error.Println(mod.Name + " does not have a version for " + version)
 						}
@@ -313,6 +313,33 @@ func main() {
 					util.Fatal(services.SaveInstance(newInstance))
 					services.SetActiveInstance(newName)
 					pterm.Success.Println("Migration Complete")
+					return nil
+				},
+			},
+			{
+				Name: "rename",
+				Usage: "Rename the current instance",
+				Action: func(c *cli.Context) error {
+					state := fileutils.LoadAppState()
+					instance, err := services.GetInstance(state.ActiveInstance)
+					if err != nil {
+						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						return nil
+					}
+
+					oldName := instance.Name
+					instance.Name = c.Args().Get(0)
+					
+					for i, in := range state.Instances {
+						if in.Name == oldName {
+							state.Instances[i] = instance
+							break
+						}
+					}
+
+					fileutils.SaveAppState(state)
+					services.SetActiveInstance(instance.Name)
+					pterm.Success.Println("Renamed " + oldName + " to " + instance.Name)
 					return nil
 				},
 			},

@@ -163,8 +163,8 @@ func UpdateInstance(state *fileutils.State, name string) {
 		}
 	}
 	
-	flVersion, err1 := api.GetLatestFabricLoaderVersion()
-	util.Fatal(err1)
+	flVersion, err := api.GetLatestFabricLoaderVersion()
+	util.Fatal(err)
 	api.InstallOrUpdateFabricInstaller()
 
 	//Update fabric loader
@@ -177,10 +177,16 @@ func UpdateInstance(state *fileutils.State, name string) {
 	for _, mod := range instance.Mods {
 		var modData util.ModData
 		if mod.Platform == "modrinth" {
-			modData, err4 := api.GetModrinthModData(modData.Slug, instance.Version)
-			util.Fatal(err4)
+			modData, err1 := api.GetModrinthModData(modData.Slug, instance.Version)
+			if err1 == nil && mod.Id != modData.Id {
+				RemoveMod(&instance, mod.Id)
+				util.Fatal(AddMod(&instance, "", modData))
+			}
+		}
 
-			if mod.Id != modData.Id {
+		if mod.Platform == "curse" {
+			modData, err1 := api.GetCurseModData(modData.Slug, instance.Version)
+			if err1 == nil && mod.Id != modData.Id {
 				RemoveMod(&instance, mod.Id)
 				util.Fatal(AddMod(&instance, "", modData))
 			}
