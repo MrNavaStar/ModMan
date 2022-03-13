@@ -28,7 +28,8 @@ func main() {
 		Commands: []*cli.Command {
 			{
 				Name: "init",
-				Usage: "Setup modman on your system",
+				Usage: "init",
+				Description: "Setup modman on your system",
 				Action: func(c *cli.Context) error {
 					pterm.DefaultCenter.Println(pterm.FgLightCyan.Sprint(figure.NewFigure("ModMan", "speed", true)))
 
@@ -39,8 +40,10 @@ func main() {
 					pterm.Info.Println("Enter the path to your .minecraft folder:")
 					pterm.FgDarkGray.Print(">>> ")
 					workDir, _ := reader.ReadString('\n')
-					workDir = strings.Replace(workDir, "\n", "", -1)
+					workDir = strings.ReplaceAll(workDir, "\n", "")
 					
+					
+
 					fileutils.Setup(workDir)
 					api.InstallOrUpdateFabricInstaller()
 					pterm.Success.Println("Setup complete")
@@ -50,7 +53,8 @@ func main() {
 			{
 				Name: "ls",
 				Aliases: []string{"list"},
-				Usage:   "List all instances",
+				Usage: "ls",
+				Description:   "List all instances",
 				Action:  func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
 
@@ -76,7 +80,8 @@ func main() {
 			},
 			{
 				Name: "make",
-				Usage: "Create a  new instance",
+				Usage: "make [name] [mc version]",
+				Description: "Create a new instance",
 				Action: func(c *cli.Context) error {
 					name := c.Args().Get(0)
 					version := c.Args().Get(1)
@@ -103,8 +108,10 @@ func main() {
 				},
 			},
 			{
-				Name: "mod",
-				Usage: "Modify an instance",
+				Name: "sel",
+				Aliases: []string{"select"},
+				Usage: "sel [instance name]",
+				Description: "Select an instance",
 				Action: func(c *cli.Context) error {
 					instance, err := services.GetInstance(c.Args().Get(0))
 					if err != nil {
@@ -120,7 +127,8 @@ func main() {
 			{
 				Name: "rm",
 				Aliases: []string{"remove"},
-				Usage: "Remove an instance",
+				Usage: "rm [instance name]",
+				Description: "Remove an instance",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
 					_, err := services.GetInstance(args.Get(0))
@@ -145,7 +153,8 @@ func main() {
 			},
 			{
 				Name: "install",
-				Usage: "Install mods",
+				Usage: "install [mod slug 1] [mod slug 2] [mod slug 3]",
+				Description: "Install mods - as many as you like. Curseforge slugs marked with c: at the start. Ex: c:sodium",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
 					state := fileutils.LoadAppState()
@@ -215,7 +224,8 @@ func main() {
 			},
 			{
 				Name: "uninstall",
-				Usage: "Uninstall mods",
+				Usage: "uninstall [mod slug 1] [mod slug 2] [mod slug 3]",
+				Description: "Uninstall mods - as many as you like. Do not use c:",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
 					state := fileutils.LoadAppState()
@@ -238,7 +248,8 @@ func main() {
 			},
 			{
 				Name: "lsmod",
-				Usage: "list mods installed on the active instance",
+				Usage: "lsmod",
+				Description: "list mods installed on the selected instance",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
 
@@ -265,7 +276,8 @@ func main() {
 			},
 			{
 				Name: "update",
-				Usage: "update an instance",
+				Usage: "update",
+				Description: "updates the selected instance",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
 
@@ -284,7 +296,8 @@ func main() {
 			},
 			{
 				Name: "migrate",
-				Usage: "migrate an instance to a newer game version",
+				Usage: "migrate [mc version]",
+				Description: "migrates the selected instance to the inputed game version",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
 					version := c.Args().Get(0)
@@ -332,7 +345,8 @@ func main() {
 			},
 			{
 				Name: "rename",
-				Usage: "Rename the current instance",
+				Usage: "rename [new name]",
+				Description: "Renames the selected instance",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
 					instance, err := services.GetInstance(state.ActiveInstance)
@@ -358,9 +372,10 @@ func main() {
 				},
 			},
 			{
-				Name: "version",
-				Aliases: []string{"v"},
-				Usage: "Show modman version",
+				Name: "v",
+				Aliases: []string{"version"},
+				Usage: "v",
+				Description: "Show modman version",
 				Action: func(c *cli.Context) error {
 					pterm.Info.Println("v" + util.GetVersion())
 					return nil
