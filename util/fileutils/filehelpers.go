@@ -71,7 +71,6 @@ type ModJson struct {
 	Version string
 	Name string
 	Description string
-	Authors []string
 	Depends struct {
 		FabricLoader string
 		Fabric string
