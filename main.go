@@ -84,6 +84,11 @@ func main() {
 					if version == "" {
 						version = api.GetLatestMcVersion()
 					}
+
+					if !api.IsVersionSupported(version) {
+						pterm.Error.Println("Version not supported ~ Lowest supported is 18w43b (1.14)")
+						return nil
+					}
 					
 					pterm.Info.Println("Creating " + name)
 					err1 := services.CreateInstance(name, version)
@@ -91,7 +96,6 @@ func main() {
 						pterm.Error.Println("Instance with that name already exists")
 						return nil
 					}
-					
 
 					pterm.Success.Println("Created " + name)
 					services.SetActiveInstance(name)
@@ -288,6 +292,16 @@ func main() {
 					oldInstance, err := services.GetInstance(state.ActiveInstance)
 					if err != nil {
 						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						return nil
+					}
+
+					if version == "" {
+						pterm.Error.Println("Please enter a valid minecraft version")
+						return nil
+					}
+
+					if !api.IsVersionSupported(version) {
+						pterm.Error.Println("Version not supported ~ Lowest supported is 18w43b (1.14)")
 						return nil
 					}
 

@@ -13,19 +13,14 @@ import (
 	"github.com/pterm/pterm"
 )
 
-type LoaderVersion struct {
-	Version string
-	Stable bool
-}
-
-type InstallerVersion struct {
+type Version struct {
 	Version string
 	Stable bool
 	Url string
 }
 
 func GetLatestFabricLoaderVersion() (s string, e error) {
-	var loaderVersions []LoaderVersion
+	var loaderVersions []Version
 	_, err := client.R().SetResult(&loaderVersions).Get("https://meta.fabricmc.net/v2/versions/loader")
 	util.Fatal(err)
 
@@ -40,7 +35,7 @@ func GetLatestFabricLoaderVersion() (s string, e error) {
 func InstallOrUpdateFabricInstaller() {
 	state := fileutils.LoadAppState()
 
-	var installerVersions []InstallerVersion
+	var installerVersions []Version
 	_, err1 := client.R().SetResult(&installerVersions).Get("https://meta.fabricmc.net/v2/versions/installer")
 	if err1 != nil {
 		pterm.Fatal.Println(err1)
@@ -62,7 +57,7 @@ func InstallFabricLoader(state *fileutils.State, gameVersion string, loaderVersi
 		return 
 	}
  
-	cmd := exec.Command("java", "-jar", state.WorkDir + "/installers/fabric-installer.jar", "client", "-dir", state.DotMinecraft, "-mcversion", gameVersion, "-loader", loaderVersion, "-noprofile")
+	cmd := exec.Command("java", "-jar", state.WorkDir + "/installers/fabric-installer.jar", "client", "-dir", state.DotMinecraft, "-mcversion", gameVersion, "-loader", loaderVersion, "-noprofile", "-snapshot")
 	var stdoutBuf, stderrBuf bytes.Buffer
 	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
 	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
@@ -70,4 +65,20 @@ func InstallFabricLoader(state *fileutils.State, gameVersion string, loaderVersi
 	util.Fatal(err)
 
 	state.FabricLoaderVersions = append(state.FabricLoaderVersions, loaderVersion + "-" + gameVersion)
+}
+
+func IsVersionSupported(version string) bool {
+	var versions []Version
+	_, err := client.R().SetResult(&versions).Get("https://meta.fabricmc.net/v2/versions/game")
+	if err != nil {
+		pterm.Fatal.Println(err)
+	}
+
+	for _, v := range versions {
+		
+		if v.Version == version {
+			return true
+		}
+	}
+	return false
 }
