@@ -80,22 +80,18 @@ func main() {
 				Action: func(c *cli.Context) error {
 					name := c.Args().Get(0)
 					version := c.Args().Get(1)
-					_, err := services.GetInstance(name)
-					if err == nil {
-						pterm.Error.Println("Instance with that name already exists")
-						return nil
-					}
 					
 					if version == "" {
 						version = api.GetLatestMcVersion()
 					}
-
+					
 					pterm.Info.Println("Creating " + name)
 					err1 := services.CreateInstance(name, version)
 					if err1 != nil {
-						pterm.Println("Instance with that name already exists")
+						pterm.Error.Println("Instance with that name already exists")
 						return nil
 					}
+					
 
 					pterm.Success.Println("Created " + name)
 					services.SetActiveInstance(name)
@@ -295,11 +291,11 @@ func main() {
 						return nil
 					}
 
-					pterm.Info.Println("Migrating " + state.ActiveInstance + " to " + c.Args().Get(0))
-					newName := oldInstance.Name + "_Migrated"
+					pterm.Info.Println("Migrating " + state.ActiveInstance + " to " + version)
+					newName := state.ActiveInstance + "_Migrated"
 					err1 := services.CreateInstance(newName, version)
 					if err1 != nil {
-						newName = oldInstance.Name + "_Migrated_at_" + time.Now().String()
+						newName = oldInstance.Name + "_Migrated:" + strings.ReplaceAll(time.Now().Format(time.RFC822), " ", "_")
 						services.CreateInstance(newName, version)
 					}
 
@@ -308,7 +304,7 @@ func main() {
 					for _, mod := range oldInstance.Mods {
 						if !mod.IsADependency { 
 							err2 := services.AddMod(&newInstance, mod.ProjectId, util.ModData{}, false, false)
-							if err2 != nil {
+							if err2 != nil && err2.Error() == "failed to find matching version" {
 								pterm.Error.Println(mod.Name + " does not have a version for " + version)
 							}
 						}

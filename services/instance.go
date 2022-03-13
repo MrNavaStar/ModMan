@@ -17,6 +17,12 @@ import (
 func CreateInstance(name string, version string) error {
 	state := fileutils.LoadAppState()
 
+	for _, instance := range state.Instances {
+		if strings.EqualFold(instance.Name, name) {
+			return errors.New("already instance with that name")
+		}
+	}
+
 	var instance util.Instance
 	instance.Name = name
 	instance.Version = version
@@ -24,7 +30,7 @@ func CreateInstance(name string, version string) error {
 
 	flversion, err1 := api.GetLatestFabricLoaderVersion()
 	if err1 != nil {
-		return err1
+		util.Fatal(err1)
 	}
 	instance.FabricLoaderVersion = flversion
 	state.Instances = append(state.Instances, instance)
