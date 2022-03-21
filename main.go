@@ -171,11 +171,6 @@ func main() {
 					for i := 0; i < len(mods); i++ {
 						mod := mods[i]
 
-						if mod == "-c" {
-							prefix = "c="
-							continue
-						}
-
 						err2 := services.AddMod(&instance, prefix + mod, util.ModData{}, false, false)
 						if err2 != nil {
 							if err2.Error() == "mod already added" {
@@ -212,11 +207,13 @@ func main() {
 
 						if input == "Y" || input == "y" || input == "" {
 							err3 := services.AddMod(&instance, mod.Slug, util.ModData{}, false, false)
-							if err3 != nil && err3.Error() == "mod already added" {		
-								pterm.Error.Println(mod.Slug + " has already been added")
-								continue	
+							if err3 != nil {
+								if err3.Error() == "mod already added" {		
+									pterm.Error.Println(mod.Slug + " has already been added")
+									continue	
+								}
+								pterm.Error.Println(err3)
 							}
-							pterm.Error.Println(err3)
 						}
 					}
 					return services.SaveInstance(instance)
