@@ -1,12 +1,9 @@
 package api
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
-	"os/exec"
 
 	"github.com/mrnavastar/modman/util"
 	"github.com/mrnavastar/modman/util/fileutils"
@@ -32,39 +29,20 @@ func GetLatestFabricLoaderVersion() (s string, e error) {
 	return "", errors.New("failed to find a stable version")
 }
 
-func InstallOrUpdateFabricInstaller() {
-	state := fileutils.LoadAppState()
-
-	var installerVersions []Version
-	_, err1 := client.R().SetResult(&installerVersions).Get("https://meta.fabricmc.net/v2/versions/installer")
-	if err1 != nil {
-		pterm.Fatal.Println(err1)
-	}
-
-	for _, installerVersion := range installerVersions {
-		if installerVersion.Stable && state.FabricInstallerVersion != installerVersion.Version {
-			fmt.Println("Installing fabric installer v" + installerVersion.Version)
-			fileutils.DownloadFile(installerVersion.Url, state.WorkDir + "/installers/fabric-installer.jar")
-
-			state.FabricInstallerVersion = installerVersion.Version
-		}
-	}
-	fileutils.SaveAppState(state)
-}
-
-func InstallFabricLoader(state *fileutils.State, gameVersion string, loaderVersion string) {
-	if util.Contains(state.FabricLoaderVersions, loaderVersion + "-" + gameVersion) {
-		return 
-	}
- 
-	cmd := exec.Command("java", "-jar", state.WorkDir + "/installers/fabric-installer.jar", "client", "-dir", state.DotMinecraft, "-mcversion", gameVersion, "-loader", loaderVersion, "-noprofile", "-snapshot")
-	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
-	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
-	err := cmd.Run()
+func DownloadFabricJson(state *fileutils.State, gameVersion string, loaderVersion string) {
+	response, err := client.R().Get("https://meta.fabricmc.net/v2/versions/loader/" + gameVersion + "/" + loaderVersion + "/profile/json")
 	util.Fatal(err)
 
-	state.FabricLoaderVersions = append(state.FabricLoaderVersions, loaderVersion + "-" + gameVersion)
+	profileName := "fabric-loader-" + loaderVersion + "-" + gameVersion
+	dir := state.DotMinecraft + "/versions/" + profileName
+	if _, err1 := os.Stat(dir + "/" + profileName + ".json"); os.IsNotExist(err1) {
+		util.Fatal(os.MkdirAll(dir, 0700))
+	} else {
+		return
+	}
+
+	err2 := ioutil.WriteFile(dir + "/" + profileName + ".json", response.Body(), 0644)
+	util.Fatal(err2)
 }
 
 func IsVersionSupported(version string) bool {

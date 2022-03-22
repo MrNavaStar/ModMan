@@ -35,7 +35,7 @@ func CreateInstance(name string, version string) error {
 	instance.FabricLoaderVersion = flversion
 	state.Instances = append(state.Instances, instance)
 	
-	api.InstallFabricLoader(&state, version, flversion)
+	api.DownloadFabricJson(&state, version, flversion)
 
 	if _, err := os.Stat(instance.Path); os.IsNotExist(err) {
 		util.Fatal(os.MkdirAll(instance.Path, 0700))
@@ -214,13 +214,12 @@ func UpdateInstance(state *fileutils.State, name string) {
 		}
 	}
 	
-	api.InstallOrUpdateFabricInstaller()
 	flVersion, err := api.GetLatestFabricLoaderVersion()
 	util.Fatal(err)
 
 	//Update fabric loader
 	if semver.Compare(instance.FabricLoaderVersion, flVersion) == -1 {
-		api.InstallFabricLoader(state, instance.Version, flVersion)
+		api.DownloadFabricJson(state, instance.Version, flVersion)
 		instance.FabricLoaderVersion = flVersion
 	}
 

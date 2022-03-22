@@ -42,10 +42,7 @@ func main() {
 					workDir, _ := reader.ReadString('\n')
 					workDir = strings.ReplaceAll(workDir, "\n", "")
 					
-					
-
 					fileutils.Setup(workDir)
-					api.InstallOrUpdateFabricInstaller()
 					pterm.Success.Println("Setup complete")
 					return nil
 				},
@@ -241,9 +238,10 @@ func main() {
 								if len(mods) != 0 {
 									message := modData.Name + " is a dependency for:"
 									for i, m := range mods {
-										message += " " + m
-										if i > 0 {
-											message += ", "
+										if i == 0 {
+											message += " " + m
+										} else {
+											message += ", " + m
 										}
 									}
 
@@ -274,7 +272,7 @@ func main() {
 
 					instance, err1 := services.GetInstance(state.ActiveInstance)
 					if err1 != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
+						pterm.Error.Println("Must select an instance ~ modman sel <name>")
 						return nil
 					}
 
@@ -302,7 +300,7 @@ func main() {
 
 					instance, err := services.GetInstance(state.ActiveInstance)
 					if err != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
+						pterm.Error.Println("Must select an instance to update ~ modman sel <name>")
 						return nil
 					}
 
@@ -323,7 +321,7 @@ func main() {
 
 					oldInstance, err := services.GetInstance(state.ActiveInstance)
 					if err != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
+						pterm.Error.Println("Must select an instance to migrate ~ modman sel <name>")
 						return nil
 					}
 
