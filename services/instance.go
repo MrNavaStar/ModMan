@@ -76,6 +76,12 @@ func DeleteInstance(name string) {
 	fileutils.SaveAppState(state)
 }
 
+func SetActiveInstance(name string) {
+	state := fileutils.LoadAppState()
+	state.ActiveInstance = name
+	fileutils.SaveAppState(state)
+}
+
 func GetInstance(name string) (i util.Instance, e error) {
 	state := fileutils.LoadAppState()
 
@@ -109,8 +115,27 @@ func isModDownloaded(instance *util.Instance, slug string) bool {
 	return false
 }
 
+func GetModsRelyOn(instance *util.Instance, slug string) []string {
+	var mod util.ModData
+	for _, m := range instance.Mods {
+		if m.Slug == slug {
+			mod = m
+		}
+	}
+
+	var mods []string
+	for _, m := range instance.Mods {
+		for _, projectId := range m.Dependencies {
+			if mod.ProjectId == projectId {
+				mods = append(mods, m.Name)
+			}
+		} 
+	}
+	return mods
+}
+
 //Must call SaveInstance after using! - this allows for batching mod installs into one file write call
-func AddMod(instance *util.Instance, arg string, modData util.ModData, isDep bool, isUpdate bool) error {
+func AddMod(instance *util.Instance, arg string, modData util.ModData, isUpdate bool) error {
 	slug := strings.Replace(arg, "c:", "", -1)
 
 	if modData.Id == "" {
@@ -140,7 +165,6 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isDep boo
 	util.Fatal(err)
 
 	modData.Version = modJson.Version
-	modData.IsADependency = isDep
 	instance.Mods = append(instance.Mods, modData)
 	
 	if !isUpdate {
@@ -148,14 +172,14 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isDep boo
 
 		//Check if mod requires fabric-api
 		if modJson.Depends.Fabric != "" && !isModDownloaded(instance, "fabric-api") {
-			err := AddMod(instance, "fabric-api", util.ModData{}, true, false)
+			err := AddMod(instance, "fabric-api", util.ModData{}, false)
 			if err != nil && err.Error() != "mod already added" {
 				pterm.Error.Println("Failed to download dependency for " + modData.Name + ": Fabric-API")
 			}
 		}
 
 		for _, project := range modData.Dependencies {
-			err := AddMod(instance, project, util.ModData{}, true, false)
+			err := AddMod(instance, project, util.ModData{}, false)
 			if err != nil && err.Error() == "failed to get mod data" {
 				pterm.Error.Println("Failed to download dependency for " + modData.Name + ": " + project)
 			}
@@ -179,12 +203,6 @@ func RemoveMod(instance *util.Instance, id string)  {
 			pterm.Success.Println("Uninstalled " + mod.Name)
 		}
 	}
-}
-
-func SetActiveInstance(name string) {
-	state := fileutils.LoadAppState()
-	state.ActiveInstance = name
-	fileutils.SaveAppState(state)
 }
 
 func UpdateInstance(state *fileutils.State, name string) {
@@ -227,7 +245,7 @@ func UpdateInstance(state *fileutils.State, name string) {
 
 		if mod.Id != modData.Id {
 			RemoveMod(&instance, mod.Id)
-			util.Fatal(AddMod(&instance, "", modData, false, true))
+			util.Fatal(AddMod(&instance, "", modData, true))
 		}
 	}	
 	util.Fatal(SaveInstance(instance))

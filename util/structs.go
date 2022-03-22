@@ -10,7 +10,6 @@ type ModData struct {
 	Url string
 	Filename string
 	Dependencies []string
-	IsADependency bool
 }
 
 type Instance struct {

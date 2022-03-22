@@ -161,7 +161,7 @@ func main() {
 
 					instance, err1 := services.GetInstance(state.ActiveInstance)
 					if err1 != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
 						return nil
 					} 
 					
@@ -171,7 +171,7 @@ func main() {
 					for i := 0; i < len(mods); i++ {
 						mod := mods[i]
 
-						err2 := services.AddMod(&instance, prefix + mod, util.ModData{}, false, false)
+						err2 := services.AddMod(&instance, prefix + mod, util.ModData{}, false)
 						if err2 != nil {
 							if err2.Error() == "mod already added" {
 								pterm.Info.Println(mod + " has already been added")
@@ -205,8 +205,8 @@ func main() {
 						input, _ := reader.ReadString('\n')
 						input = strings.Replace(input, "\n", "", -1)
 
-						if input == "Y" || input == "y" || input == "" {
-							err3 := services.AddMod(&instance, mod.Slug, util.ModData{}, false, false)
+						if strings.EqualFold(input, "y") || input == "" {
+							err3 := services.AddMod(&instance, mod.Slug, util.ModData{}, false)
 							if err3 != nil {
 								if err3.Error() == "mod already added" {		
 									pterm.Error.Println(mod.Slug + " has already been added")
@@ -229,13 +229,35 @@ func main() {
 
 					instance, err1 := services.GetInstance(state.ActiveInstance)
 					if err1 != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
 						return nil
 					} 
 
 					for _, mod := range args.Slice() {
 						for _, modData := range instance.Mods {
-							if strings.EqualFold(modData.Name, mod) || strings.EqualFold(modData.Slug, mod) {
+							if strings.EqualFold(modData.Name, mod) || strings.EqualFold(modData.Slug, mod) || modData.ProjectId == mod {
+								mods := services.GetModsRelyOn(&instance, modData.Slug)
+
+								if len(mods) != 0 {
+									message := modData.Name + " is a dependency for:"
+									for i, m := range mods {
+										message += " " + m
+										if i > 0 {
+											message += ", "
+										}
+									}
+
+									pterm.Warning.Println(message)
+									reader := bufio.NewReader(os.Stdin)
+									pterm.Info.Print("Remove anyway? [y/N]: ")
+									input, _ := reader.ReadString('\n')
+									input = strings.Replace(input, "\n", "", -1)
+
+									if strings.EqualFold(input, "n") || input == "" {
+										return nil
+									}
+								}
+
 								services.RemoveMod(&instance, modData.Id)
 							}
 						}
@@ -252,7 +274,7 @@ func main() {
 
 					instance, err1 := services.GetInstance(state.ActiveInstance)
 					if err1 != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
 						return nil
 					}
 
@@ -280,7 +302,7 @@ func main() {
 
 					instance, err := services.GetInstance(state.ActiveInstance)
 					if err != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
 						return nil
 					}
 
@@ -301,7 +323,7 @@ func main() {
 
 					oldInstance, err := services.GetInstance(state.ActiveInstance)
 					if err != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
 						return nil
 					}
 
@@ -326,8 +348,8 @@ func main() {
 					newInstance, _ := services.GetInstance(newName)
 
 					for _, mod := range oldInstance.Mods {
-						if !mod.IsADependency { 
-							err2 := services.AddMod(&newInstance, mod.ProjectId, util.ModData{}, false, false)
+						if len(services.GetModsRelyOn(&oldInstance, mod.Slug)) == 0 { 
+							err2 := services.AddMod(&newInstance, mod.ProjectId, util.ModData{}, false)
 							if err2 != nil && err2.Error() == "failed to find matching version" {
 								pterm.Error.Println(mod.Name + " does not have a version for " + version)
 							}
@@ -348,7 +370,7 @@ func main() {
 					state := fileutils.LoadAppState()
 					instance, err := services.GetInstance(state.ActiveInstance)
 					if err != nil {
-						pterm.Error.Println("Must select an instance to modify ~ modman mod <name>")
+						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
 						return nil
 					}
 
