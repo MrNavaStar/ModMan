@@ -279,5 +279,7 @@ func ImportInstance(file string) string {
 		mod.Dependencies = nil
 		AddMod(&instance, "", mod, false)
 	}
+
+	util.Fatal(SaveInstance(instance))
 	return instance.Name
 }
