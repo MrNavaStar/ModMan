@@ -34,6 +34,12 @@ func DownloadFabricJson(state *fileutils.State, gameVersion string, loaderVersio
 	util.Fatal(err)
 
 	profileName := "fabric-loader-" + loaderVersion + "-" + gameVersion
+	for _, version := range state.FabricLoaderVersions {
+		if version == profileName {
+			return
+		}
+	}
+
 	dir := state.DotMinecraft + "/versions/" + profileName
 	if _, err1 := os.Stat(dir + "/" + profileName + ".json"); os.IsNotExist(err1) {
 		util.Fatal(os.MkdirAll(dir, 0700))
@@ -53,7 +59,6 @@ func IsVersionSupported(version string) bool {
 	}
 
 	for _, v := range versions {
-		
 		if v.Version == version {
 			return true
 		}
