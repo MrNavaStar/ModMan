@@ -21,7 +21,7 @@ func Setup(dotMinecraft string) {
     util.Fatal(keyring.Set("modman", "dot_minecraft", dotMinecraft))
 
 	if _, err := os.Stat(workDir); os.IsNotExist(err) {
-		util.Fatal(os.MkdirAll(workDir + "/installers", 0700))
+		util.Fatal(os.MkdirAll(workDir, 0700))
 	}
 
 	if _, err1 := os.Stat(workDir + "/modman.json"); os.IsNotExist(err1) {
