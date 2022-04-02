@@ -389,6 +389,37 @@ func main() {
 				},
 			},
 			{
+				Name: "export",
+				Usage: "export",
+				Description: "Exports the selected instance",
+				Action: func(c *cli.Context) error {
+					state := fileutils.LoadAppState()
+					instance, err := services.GetInstance(state.ActiveInstance)
+					if err != nil {
+						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
+						return nil
+					}
+
+					pterm.Info.Println("Exporting " + instance.Name)
+					services.ExportInstance(instance)
+					pterm.Success.Println("Exported " + instance.Name)
+					return nil
+				},
+			},
+			{
+				Name: "import",
+				Usage: "import [instance.json]",
+				Description: "Imports an instance from an exported json",
+				Action: func(c *cli.Context) error {
+					file := c.Args().Get(0)
+					
+					pterm.Info.Println("Importing " + file)
+					name := services.ImportInstance(file)
+					pterm.Success.Println("Imported " + name)
+					return nil
+				},
+			},
+			{
 				Name: "v",
 				Aliases: []string{"version"},
 				Usage: "v",

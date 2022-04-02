@@ -247,21 +247,22 @@ func UpdateInstance(state *fileutils.State, name string) {
 	util.Fatal(SaveInstance(instance))
 }
 
-func ExportInstance(name string) {
-	instance, err := GetInstance(name)
-	util.Fatal(err)
-	
-	dotMinecraft := fileutils.LoadAppState().DotMinecraft
+func ExportInstance(instance util.Instance) {
+	state := fileutils.LoadAppState()
 	instance.Path = ""
 	
 	file, err1 := json.MarshalIndent(instance, "", " ")
 	util.Fatal(err1)
 
-	err2 := ioutil.WriteFile(dotMinecraft + "/modman/exports/" + name + ".json", file, 0644)
+	if _, err := os.Stat(state.WorkDir + "/exports/"); os.IsNotExist(err) {
+		util.Fatal(os.MkdirAll(state.WorkDir + "/exports/", 0700))
+	}
+
+	err2 := ioutil.WriteFile(state.WorkDir + "/exports/" + instance.Name + ".json", file, 0644)
 	util.Fatal(err2)
 }
 
-func ImportInstance(file string) {
+func ImportInstance(file string) string {
 	data, err := ioutil.ReadFile(file)
 	util.Fatal(err)
 
@@ -273,7 +274,10 @@ func ImportInstance(file string) {
 	instance, err2 := GetInstance(instanceData.Name)
 	util.Fatal(err2)
 
+
 	for _, mod := range instanceData.Mods {
+		mod.Dependencies = nil
 		AddMod(&instance, "", mod, false)
 	}
+	return instance.Name
 }
