@@ -1,7 +1,9 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -206,13 +208,8 @@ func RemoveMod(instance *util.Instance, id string)  {
 }
 
 func UpdateInstance(state *fileutils.State, name string) {
-	var instance util.Instance
-	for _, i := range state.Instances {
-		if strings.EqualFold(i.Name, name) {
-			instance = i
-			break
-		}
-	}
+	instance, err := GetInstance(name)
+	util.Fatal(err)
 	
 	flVersion, err := api.GetLatestFabricLoaderVersion()
 	util.Fatal(err)
@@ -248,4 +245,35 @@ func UpdateInstance(state *fileutils.State, name string) {
 		}
 	}	
 	util.Fatal(SaveInstance(instance))
+}
+
+func ExportInstance(name string) {
+	instance, err := GetInstance(name)
+	util.Fatal(err)
+	
+	dotMinecraft := fileutils.LoadAppState().DotMinecraft
+	instance.Path = ""
+	
+	file, err1 := json.MarshalIndent(instance, "", " ")
+	util.Fatal(err1)
+
+	err2 := ioutil.WriteFile(dotMinecraft + "/modman/exports/" + name + ".json", file, 0644)
+	util.Fatal(err2)
+}
+
+func ImportInstance(file string) {
+	data, err := ioutil.ReadFile(file)
+	util.Fatal(err)
+
+	var instanceData util.Instance
+	err2 := json.Unmarshal(data, &instanceData)
+	util.Fatal(err2)
+
+	CreateInstance(instanceData.Name, instanceData.Version)
+	instance, err2 := GetInstance(instanceData.Name)
+	util.Fatal(err2)
+
+	for _, mod := range instanceData.Mods {
+		AddMod(&instance, "", mod, false)
+	}
 }
