@@ -173,12 +173,12 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isUpdate 
 		pterm.Success.Println("Installed " + modData.Name)
 
 		//Check if mod requires fabric-api
-		if modJson.Depends.Fabric != "" && !isModDownloaded(instance, "fabric-api") {
-			err := AddMod(instance, "fabric-api", util.ModData{}, false)
-			if err != nil && err.Error() != "mod already added" {
-				pterm.Error.Println("Failed to download dependency for " + modData.Name + ": Fabric-API")
-			}
-		}
+		//if modJson.Depends.Fabric != "" && !isModDownloaded(instance, "fabric-api") {
+		//	err := AddMod(instance, "fabric-api", util.ModData{}, false)
+		//	if err != nil && err.Error() != "mod already added" {
+		//		pterm.Error.Println("Failed to download dependency for " + modData.Name + ": Fabric-API")
+		//	}
+		//}
 
 		for _, project := range modData.Dependencies {
 			err := AddMod(instance, project, util.ModData{}, false)
