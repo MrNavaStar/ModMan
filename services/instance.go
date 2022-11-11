@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -36,7 +37,7 @@ func CreateInstance(name string, version string) error {
 	}
 	instance.FabricLoaderVersion = flversion
 	state.Instances = append(state.Instances, instance)
-	
+
 	api.DownloadFabricJson(&state, version, flversion)
 
 	if _, err := os.Stat(instance.Path); os.IsNotExist(err) {
@@ -53,7 +54,7 @@ func CreateInstance(name string, version string) error {
 	profile.LastUsed = time
 	profile.LastVersionId = "fabric-loader-" + instance.FabricLoaderVersion + "-" + version
 	profile.JavaArgs = "-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfabric.addMods=" + instance.Path
-	
+
 	fileutils.AddProfile(profile)
 	fileutils.SaveAppState(state)
 	return nil
@@ -64,17 +65,19 @@ func DeleteInstance(name string) {
 
 	list := state.Instances
 	for i, instance := range list {
-		if strings.EqualFold(instance.Name, name) { 
+		if strings.EqualFold(instance.Name, name) {
 			fileutils.RemoveProfile(name)
 			util.Fatal(os.RemoveAll(instance.Path))
 			SetActiveInstance("")
 
 			//Remove Item
 			list[i] = list[len(list)-1]
-    		state.Instances = list[:len(list)-1]
+			state.Instances = list[:len(list)-1]
 			break
 		}
 	}
+
+	SetActiveInstance("")
 	fileutils.SaveAppState(state)
 }
 
@@ -108,9 +111,9 @@ func SaveInstance(instance util.Instance) error {
 	return errors.New("failed to find instance")
 }
 
-func isModDownloaded(instance *util.Instance, slug string) bool {
+func isModDownloaded(instance *util.Instance, modData util.ModData) bool {
 	for _, mod := range instance.Mods {
-		if mod.Slug == slug {
+		if mod.ProjectId == modData.ProjectId {
 			return true
 		}
 	}
@@ -127,22 +130,22 @@ func GetModsRelyOn(instance *util.Instance, slug string) []string {
 
 	var mods []string
 	for _, m := range instance.Mods {
-		for _, projectId := range m.Dependencies {
-			if mod.ProjectId == projectId {
+		for _, dep := range m.Dependencies {
+			if mod.ProjectId == dep.ProjectId {
 				mods = append(mods, m.Name)
 			}
-		} 
+		}
 	}
 	return mods
 }
 
-//Must call SaveInstance after using! - this allows for batching mod installs into one file write call
+// AddMod Must call SaveInstance after using! - this allows for batching mod installations into one file write call
 func AddMod(instance *util.Instance, arg string, modData util.ModData, isUpdate bool) error {
 	slug := strings.Replace(arg, "c:", "", -1)
 
 	if modData.Id == "" {
 		//Check if slug is int
-		if  _, err := strconv.Atoi(slug); err == nil || strings.Contains(arg, "c:") {
+		if _, err := strconv.Atoi(slug); err == nil || strings.Contains(arg, "c:") {
 			m, err1 := api.GetCurseModData(slug, instance.Version)
 			if err1 != nil {
 				return err1
@@ -157,7 +160,7 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isUpdate 
 		}
 	}
 
-	if isModDownloaded(instance, modData.Slug) {
+	if isModDownloaded(instance, modData) {
 		return errors.New("mod already added")
 	}
 
@@ -168,7 +171,7 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isUpdate 
 
 	modData.Version = modJson.Version
 	instance.Mods = append(instance.Mods, modData)
-	
+
 	if !isUpdate {
 		pterm.Success.Println("Installed " + modData.Name)
 
@@ -180,10 +183,12 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isUpdate 
 		//	}
 		//}
 
-		for _, project := range modData.Dependencies {
-			err := AddMod(instance, project, util.ModData{}, false)
-			if err != nil && err.Error() == "failed to get mod data" {
-				pterm.Error.Println("Failed to download dependency for " + modData.Name + ": " + project)
+		for _, dep := range modData.Dependencies {
+			if dep.Required {
+				err := AddMod(instance, dep.ProjectId, util.ModData{}, false)
+				if err != nil && err.Error() == "failed to get mod data" {
+					pterm.Error.Println("Failed to download dependency for " + modData.Name + ": " + dep.Name)
+				}
 			}
 		}
 	} else {
@@ -192,8 +197,8 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isUpdate 
 	return nil
 }
 
-//Must call SaveInstanceData after using! - this allows for batching mod removals into one file write call
-func RemoveMod(instance *util.Instance, id string)  {
+// RemoveMod Must call SaveInstanceData after using! - this allows for batching mod removals into one file write call
+func RemoveMod(instance *util.Instance, id string) {
 	mods := instance.Mods
 	for i, mod := range mods {
 		if mod.Id == id {
@@ -201,7 +206,7 @@ func RemoveMod(instance *util.Instance, id string)  {
 
 			//Remove item
 			mods[i] = mods[len(mods)-1]
-    		instance.Mods = mods[:len(mods)-1]
+			instance.Mods = mods[:len(mods)-1]
 			pterm.Success.Println("Uninstalled " + mod.Name)
 		}
 	}
@@ -210,7 +215,7 @@ func RemoveMod(instance *util.Instance, id string)  {
 func UpdateInstance(state *fileutils.State, name string) {
 	instance, err := GetInstance(name)
 	util.Fatal(err)
-	
+
 	flVersion, err := api.GetLatestFabricLoaderVersion()
 	util.Fatal(err)
 
@@ -243,22 +248,22 @@ func UpdateInstance(state *fileutils.State, name string) {
 			RemoveMod(&instance, mod.Id)
 			util.Fatal(AddMod(&instance, "", modData, true))
 		}
-	}	
+	}
 	util.Fatal(SaveInstance(instance))
 }
 
 func ExportInstance(instance util.Instance) {
 	state := fileutils.LoadAppState()
 	instance.Path = ""
-	
+
 	file, err1 := json.MarshalIndent(instance, "", " ")
 	util.Fatal(err1)
 
 	if _, err := os.Stat(state.WorkDir + "/exports/"); os.IsNotExist(err) {
-		util.Fatal(os.MkdirAll(state.WorkDir + "/exports/", 0700))
+		util.Fatal(os.MkdirAll(state.WorkDir+"/exports/", 0700))
 	}
 
-	err2 := ioutil.WriteFile(state.WorkDir + "/exports/" + instance.Name + ".json", file, 0644)
+	err2 := ioutil.WriteFile(state.WorkDir+"/exports/"+instance.Name+".json", file, 0644)
 	util.Fatal(err2)
 }
 
@@ -274,7 +279,6 @@ func ImportInstance(file string) string {
 	instance, err2 := GetInstance(instanceData.Name)
 	util.Fatal(err2)
 
-
 	for _, mod := range instanceData.Mods {
 		mod.Dependencies = nil
 		AddMod(&instance, "", mod, false)
@@ -282,4 +286,26 @@ func ImportInstance(file string) string {
 
 	util.Fatal(SaveInstance(instance))
 	return instance.Name
+}
+
+func ImportMods(instance *util.Instance, folder string) {
+	var mods []string
+	filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+		util.Fatal(err)
+		mods = append(mods, path)
+		return nil
+	})
+
+	mods = mods[1:]
+
+	for _, mod := range mods {
+		_, err := fileutils.GetModJsonFromJar(mod)
+		if err != nil {
+			pterm.Error.Println(mod + " is not a fabric mod")
+		} else {
+
+		}
+	}
+
+	util.Fatal(SaveInstance(*instance))
 }

@@ -18,41 +18,41 @@ import (
 
 type failedMod struct {
 	UserIn string
-	Slug string
+	Slug   string
 }
 
 func main() {
 	app := &cli.App{
-		Name: "ModMan",
+		Name:  "ModMan",
 		Usage: "Manage your mods with ease",
-		Commands: []*cli.Command {
+		Commands: []*cli.Command{
 			{
-				Name: "init",
-				Usage: "init",
+				Name:        "init",
+				Usage:       "init",
 				Description: "Setup modman on your system",
 				Action: func(c *cli.Context) error {
 					pterm.DefaultCenter.Println(pterm.FgLightCyan.Sprint(figure.NewFigure("ModMan", "speed", true)))
 
 					pterm.DefaultCenter.Print(pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgGreen)).WithMargin(10).Sprint("V" + util.GetVersion() + " - Created By MrNavaStar"))
 					pterm.DefaultCenter.WithCenterEachLineSeparately().Println("Welcome!\nHelp contribute to this project over at:\nGit: https://github.com/MrNavaStar/ModMan\nIssues: https://github.com/MrNavaStar/ModMan/issues")
-					
+
 					reader := bufio.NewReader(os.Stdin)
 					pterm.Info.Println("Enter the path to your .minecraft folder:")
 					pterm.FgDarkGray.Print(">>> ")
 					workDir, _ := reader.ReadString('\n')
 					workDir = strings.ReplaceAll(workDir, "\n", "")
-					
+
 					fileutils.Setup(workDir)
 					pterm.Success.Println("Setup complete")
 					return nil
 				},
 			},
 			{
-				Name: "ls",
-				Aliases: []string{"list"},
-				Usage: "ls",
-				Description:   "List all instances",
-				Action:  func(c *cli.Context) error {
+				Name:        "ls",
+				Aliases:     []string{"list"},
+				Usage:       "ls",
+				Description: "List all instances",
+				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
 
 					if len(state.Instances) == 0 {
@@ -76,13 +76,13 @@ func main() {
 				},
 			},
 			{
-				Name: "make",
-				Usage: "make [name] [mc version]",
+				Name:        "make",
+				Usage:       "make [name] [mc version]",
 				Description: "Create a new instance",
 				Action: func(c *cli.Context) error {
 					name := c.Args().Get(0)
 					version := c.Args().Get(1)
-					
+
 					if version == "" {
 						version = api.GetLatestMcVersion()
 					}
@@ -91,7 +91,7 @@ func main() {
 						pterm.Error.Println("Version not supported ~ Lowest supported is 18w43b (1.14)")
 						return nil
 					}
-					
+
 					pterm.Info.Println("Creating " + name)
 					err1 := services.CreateInstance(name, version)
 					if err1 != nil {
@@ -105,9 +105,9 @@ func main() {
 				},
 			},
 			{
-				Name: "sel",
-				Aliases: []string{"select"},
-				Usage: "sel [instance name]",
+				Name:        "sel",
+				Aliases:     []string{"select"},
+				Usage:       "sel [instance name]",
 				Description: "Select an instance",
 				Action: func(c *cli.Context) error {
 					instance, err := services.GetInstance(c.Args().Get(0))
@@ -122,9 +122,9 @@ func main() {
 				},
 			},
 			{
-				Name: "rm",
-				Aliases: []string{"remove"},
-				Usage: "rm [instance name]",
+				Name:        "rm",
+				Aliases:     []string{"remove"},
+				Usage:       "rm [instance name]",
 				Description: "Remove an instance",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
@@ -149,8 +149,8 @@ func main() {
 				},
 			},
 			{
-				Name: "install",
-				Usage: "install [mod slug 1] [mod slug 2] [mod slug 3]",
+				Name:        "install",
+				Usage:       "install [mod slug 1] [mod slug 2] [mod slug 3]",
 				Description: "Install mods - as many as you like. Curseforge slugs marked with c: at the start. Ex: c:sodium",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
@@ -160,15 +160,15 @@ func main() {
 					if err1 != nil {
 						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
 						return nil
-					} 
-					
+					}
+
 					var retrymods []failedMod
 					mods := args.Slice()
 					prefix := ""
 					for i := 0; i < len(mods); i++ {
 						mod := mods[i]
 
-						err2 := services.AddMod(&instance, prefix + mod, util.ModData{}, false)
+						err2 := services.AddMod(&instance, prefix+mod, util.ModData{}, false)
 						if err2 != nil {
 							if err2.Error() == "mod already added" {
 								pterm.Info.Println(mod + " has already been added")
@@ -205,9 +205,9 @@ func main() {
 						if strings.EqualFold(input, "y") || input == "" {
 							err3 := services.AddMod(&instance, mod.Slug, util.ModData{}, false)
 							if err3 != nil {
-								if err3.Error() == "mod already added" {		
+								if err3.Error() == "mod already added" {
 									pterm.Error.Println(mod.Slug + " has already been added")
-									continue	
+									continue
 								}
 								pterm.Error.Println(err3)
 							}
@@ -217,8 +217,8 @@ func main() {
 				},
 			},
 			{
-				Name: "uninstall",
-				Usage: "uninstall [mod slug 1] [mod slug 2] [mod slug 3]",
+				Name:        "uninstall",
+				Usage:       "uninstall [mod slug 1] [mod slug 2] [mod slug 3]",
 				Description: "Uninstall mods - as many as you like. Do not use c:",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
@@ -228,7 +228,7 @@ func main() {
 					if err1 != nil {
 						pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
 						return nil
-					} 
+					}
 
 					for _, mod := range args.Slice() {
 						for _, modData := range instance.Mods {
@@ -264,8 +264,8 @@ func main() {
 				},
 			},
 			{
-				Name: "lsmod",
-				Usage: "lsmod",
+				Name:        "lsmod",
+				Usage:       "lsmod",
 				Description: "list mods installed on the selected instance",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
@@ -276,10 +276,10 @@ func main() {
 						return nil
 					}
 
-					if len(instance.Mods) == 0 { 
+					if len(instance.Mods) == 0 {
 						return nil
 					}
-					
+
 					fmt.Println()
 					var mods [][]string
 					mods = append(mods, []string{"Name", "Version", "Filename"})
@@ -292,8 +292,8 @@ func main() {
 				},
 			},
 			{
-				Name: "update",
-				Usage: "update",
+				Name:        "update",
+				Usage:       "update",
 				Description: "updates the selected instance",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
@@ -312,8 +312,8 @@ func main() {
 				},
 			},
 			{
-				Name: "migrate",
-				Usage: "migrate [mc version]",
+				Name:        "migrate",
+				Usage:       "migrate [mc version]",
 				Description: "migrates the selected instance to the inputed game version",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
@@ -346,7 +346,7 @@ func main() {
 					newInstance, _ := services.GetInstance(newName)
 
 					for _, mod := range oldInstance.Mods {
-						if len(services.GetModsRelyOn(&oldInstance, mod.Slug)) == 0 { 
+						if len(services.GetModsRelyOn(&oldInstance, mod.Slug)) == 0 {
 							err2 := services.AddMod(&newInstance, mod.ProjectId, util.ModData{}, false)
 							if err2 != nil && err2.Error() == "failed to find matching version" {
 								pterm.Error.Println(mod.Name + " does not have a version for " + version)
@@ -361,8 +361,8 @@ func main() {
 				},
 			},
 			{
-				Name: "rename",
-				Usage: "rename [new name]",
+				Name:        "rename",
+				Usage:       "rename [new name]",
 				Description: "Renames the selected instance",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
@@ -374,7 +374,7 @@ func main() {
 
 					oldName := instance.Name
 					instance.Name = c.Args().Get(0)
-					
+
 					for i, in := range state.Instances {
 						if in.Name == oldName {
 							state.Instances[i] = instance
@@ -389,8 +389,8 @@ func main() {
 				},
 			},
 			{
-				Name: "export",
-				Usage: "export",
+				Name:        "export",
+				Usage:       "export",
 				Description: "Exports the selected instance",
 				Action: func(c *cli.Context) error {
 					state := fileutils.LoadAppState()
@@ -407,22 +407,40 @@ func main() {
 				},
 			},
 			{
-				Name: "import",
-				Usage: "import [instance.json]",
+				Name:        "import",
+				Usage:       "import [instance | mods] [instance.json]",
 				Description: "Imports an instance from an exported json",
 				Action: func(c *cli.Context) error {
-					file := c.Args().Get(0)
-					
-					pterm.Info.Println("Importing " + file)
-					name := services.ImportInstance(file)
-					pterm.Success.Println("Imported " + name)
+					method := c.Args().Get(0)
+					file := c.Args().Get(1)
+
+					if method == "instance" {
+						pterm.Info.Println("Importing " + file)
+						name := services.ImportInstance(file)
+						pterm.Success.Println("Imported " + name)
+					}
+
+					if method == "mods" {
+						pterm.Info.Println("Importing mods from" + file)
+
+						state := fileutils.LoadAppState()
+						instance, err := services.GetInstance(state.ActiveInstance)
+						if err != nil {
+							pterm.Error.Println("Must select an instance to modify ~ modman sel <name>")
+							return nil
+						}
+
+						services.ImportMods(&instance, file)
+						pterm.Success.Println("Imported mods from " + file)
+					}
+
 					return nil
 				},
 			},
 			{
-				Name: "v",
-				Aliases: []string{"version"},
-				Usage: "v",
+				Name:        "v",
+				Aliases:     []string{"version"},
+				Usage:       "v",
 				Description: "Show modman version",
 				Action: func(c *cli.Context) error {
 					pterm.Info.Println("v" + util.GetVersion())

@@ -10,18 +10,18 @@ import (
 )
 
 type curseProject struct {
-	Id int
+	Id   int
 	Name string
 	Slug string
 }
 
 type file struct {
-	Id int
+	Id                      int
 	GameVersionDateReleased string
-	DownloadUrl string
-	FileName string
-	GameVersion []string
-	Modules []struct {
+	DownloadUrl             string
+	FileName                string
+	GameVersion             []string
+	Modules                 []struct {
 		Foldername string
 	}
 	Dependencies []struct {
@@ -33,7 +33,7 @@ var CURSE_API_BASE = "https://addons-ecs.forgesvc.net/api/v2"
 
 func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 	var project curseProject
-	if  _, err := strconv.Atoi(slug); err != nil {
+	if _, err := strconv.Atoi(slug); err != nil {
 		var curseProjects []curseProject
 		_, err1 := client.R().SetResult(&curseProjects).SetHeader("content-type", "application/json").Get(CURSE_API_BASE + "/addon/search?gameId=432&searchfilter=" + slug)
 		util.Fatal(err1)
@@ -70,27 +70,34 @@ func GetCurseModData(slug string, version string) (m util.ModData, e error) {
 							file = f
 							date = t
 						}
-					} 
+					}
 				}
 			}
 		}
 	}
-	
+
 	if file.DownloadUrl == "" {
 		return util.ModData{}, errors.New("failed to find matching version")
 	}
-	
-	var modData util.ModData
-	modData.Platform = "curse"
-	modData.ProjectId = fmt.Sprint(project.Id)
-	modData.Id = fmt.Sprint(file.Id)
-	modData.Name = project.Name
-	modData.Slug = project.Slug
-	modData.Url = file.DownloadUrl
-	modData.Filename = file.FileName
-	
+
+	var modData = util.ModData{
+		Platform:  "curse",
+		ProjectId: fmt.Sprint(project.Id),
+		Id:        fmt.Sprint(file.Id),
+		Name:      project.Name,
+		Slug:      project.Slug,
+		Url:       file.DownloadUrl,
+		Filename:  file.FileName,
+	}
+
 	for _, mod := range file.Dependencies {
-		modData.Dependencies = append(modData.Dependencies, fmt.Sprint(mod.AddonId))
+		var dep = util.Dependency{
+			ProjectId: fmt.Sprint(mod.AddonId),
+			Name:      fmt.Sprint(mod.AddonId),
+			Required:  true,
+		}
+
+		modData.Dependencies = append(modData.Dependencies, dep)
 	}
 	return modData, nil
 }
