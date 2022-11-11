@@ -122,10 +122,10 @@ func main() {
 				},
 			},
 			{
-				Name:        "rm",
-				Aliases:     []string{"remove"},
-				Usage:       "rm [instance name]",
-				Description: "Remove an instance",
+				Name:        "del",
+				Aliases:     []string{"delete"},
+				Usage:       "del [instance name]",
+				Description: "Delete an instance",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
 					_, err := services.GetInstance(args.Get(0))
@@ -217,9 +217,10 @@ func main() {
 				},
 			},
 			{
-				Name:        "uninstall",
-				Usage:       "uninstall [mod slug 1] [mod slug 2] [mod slug 3]",
-				Description: "Uninstall mods - as many as you like. Do not use c:",
+				Name:        "rm",
+				Aliases:     []string{"remove"},
+				Usage:       "rm [mod slug 1] [mod slug 2] [mod slug 3]",
+				Description: "Remove mods - as many as you like. Do not use c:",
 				Action: func(c *cli.Context) error {
 					args := c.Args()
 					state := fileutils.LoadAppState()
