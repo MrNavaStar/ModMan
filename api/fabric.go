@@ -10,12 +10,6 @@ import (
 	"github.com/pterm/pterm"
 )
 
-type Version struct {
-	Version string
-	Stable bool
-	Url string
-}
-
 func GetLatestFabricLoaderVersion() (s string, e error) {
 	var loaderVersions []Version
 	_, err := client.R().SetResult(&loaderVersions).Get("https://meta.fabricmc.net/v2/versions/loader")
@@ -34,11 +28,6 @@ func DownloadFabricJson(state *fileutils.State, gameVersion string, loaderVersio
 	util.Fatal(err)
 
 	profileName := "fabric-loader-" + loaderVersion + "-" + gameVersion
-	for _, version := range state.FabricLoaderVersions {
-		if version == profileName {
-			return
-		}
-	}
 
 	dir := state.DotMinecraft + "/versions/" + profileName
 	if _, err1 := os.Stat(dir + "/" + profileName + ".json"); os.IsNotExist(err1) {
@@ -47,11 +36,11 @@ func DownloadFabricJson(state *fileutils.State, gameVersion string, loaderVersio
 		return
 	}
 
-	err2 := ioutil.WriteFile(dir + "/" + profileName + ".json", response.Body(), 0644)
+	err2 := ioutil.WriteFile(dir+"/"+profileName+".json", response.Body(), 0644)
 	util.Fatal(err2)
 }
 
-func IsVersionSupported(version string) bool {
+func IsFabricVersionSupported(version string) bool {
 	var versions []Version
 	_, err := client.R().SetResult(&versions).Get("https://meta.fabricmc.net/v2/versions/game")
 	if err != nil {

@@ -31,7 +31,7 @@ type modrinthVersion struct {
 	}
 }
 
-func GetModrinthModData(slug string, version string) (m util.ModData, e error) {
+func GetModrinthModData(slug string, loader string, version string) (m util.ModData, e error) {
 	var project modrinthProject
 	var versions []modrinthVersion
 
@@ -46,7 +46,7 @@ func GetModrinthModData(slug string, version string) (m util.ModData, e error) {
 	}
 
 	for _, modVersion := range versions {
-		if util.Contains(modVersion.Loaders, "fabric") && util.Contains(modVersion.Game_versions, version) {
+		if util.Contains(modVersion.Loaders, loader) && util.Contains(modVersion.Game_versions, version) {
 			var modData = util.ModData{
 				Platform:  "modrinth",
 				Slug:      slug,
@@ -64,7 +64,10 @@ func GetModrinthModData(slug string, version string) (m util.ModData, e error) {
 					Name:      mod.File_name,
 					Required:  mod.Dependency_type == "required",
 				}
-				modData.Dependencies = append(modData.Dependencies, dep)
+
+				if dep.Required {
+					modData.Dependencies = append(modData.Dependencies, dep)
+				}
 			}
 
 			return modData, nil
@@ -80,13 +83,13 @@ type searchResult struct {
 	}
 }
 
-func SearchModrinth(query string) (s string, e error) {
+func SearchModrinth(loader string, query string) (s string, e error) {
 	resp, err := client.NewRequest().Get(MODRINTH_API_BASE + "/search?query=" + query)
 	util.Fatal(err)
 
 	var search searchResult
 	json.Unmarshal([]byte(resp.String()), &search)
-	if len(search.Hits) > 0 && util.Contains(search.Hits[0].Categories, "fabric") {
+	if len(search.Hits) > 0 && util.Contains(search.Hits[0].Categories, loader) {
 		return search.Hits[0].Slug, nil
 	}
 	return "", errors.New("no mod found")

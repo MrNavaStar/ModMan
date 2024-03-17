@@ -17,7 +17,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func CreateInstance(name string, version string) error {
+func CreateInstance(name string, loader string, version string) error {
 	state := fileutils.LoadAppState()
 
 	for _, instance := range state.Instances {
@@ -28,17 +28,9 @@ func CreateInstance(name string, version string) error {
 
 	var instance util.Instance
 	instance.Name = name
+	instance.Loader = loader
 	instance.Version = version
 	instance.Path = state.WorkDir + "/instances/" + name
-
-	flversion, err1 := api.GetLatestFabricLoaderVersion()
-	if err1 != nil {
-		util.Fatal(err1)
-	}
-	instance.FabricLoaderVersion = flversion
-	state.Instances = append(state.Instances, instance)
-
-	api.DownloadFabricJson(&state, version, flversion)
 
 	if _, err := os.Stat(instance.Path); os.IsNotExist(err) {
 		util.Fatal(os.MkdirAll(instance.Path, 0700))
@@ -52,8 +44,25 @@ func CreateInstance(name string, version string) error {
 	profile.Icon = "Crafting_Table"
 	profile.Created = time
 	profile.LastUsed = time
-	profile.LastVersionId = "fabric-loader-" + instance.FabricLoaderVersion + "-" + version
-	profile.JavaArgs = "-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M -Dfabric.addMods=" + instance.Path
+	profile.JavaArgs = "-Xmx2G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M"
+
+	if loader == "fabric" {
+		lversion, err1 := api.GetLatestFabricLoaderVersion()
+		util.Fatal(err1)
+		instance.LoaderVersion = lversion
+
+		api.DownloadFabricJson(&state, version, lversion)
+		profile.JavaArgs += " -Dfabric.addMods=" + instance.Path
+	} else if loader == "quilt" {
+		lversion := api.GetLatestQuiltLoaderVersion()
+		instance.LoaderVersion = lversion
+
+		api.DownloadQuiltJson(&state, version, lversion)
+		profile.JavaArgs += " -Dloader.modsDir=" + instance.Path
+	}
+
+	state.Instances = append(state.Instances, instance)
+	profile.LastVersionId = loader + "-loader-" + instance.LoaderVersion + "-" + version
 
 	fileutils.AddProfile(profile)
 	fileutils.SaveAppState(state)
@@ -152,7 +161,7 @@ func AddMod(instance *util.Instance, arg string, modData util.ModData, isUpdate 
 			}
 			modData = m
 		} else {
-			m, err1 := api.GetModrinthModData(slug, instance.Version)
+			m, err1 := api.GetModrinthModData(slug, instance.Loader, instance.Version)
 			if err1 != nil {
 				return err1
 			}
@@ -216,20 +225,28 @@ func UpdateInstance(state *fileutils.State, name string) {
 	instance, err := GetInstance(name)
 	util.Fatal(err)
 
-	flVersion, err := api.GetLatestFabricLoaderVersion()
-	util.Fatal(err)
+	if instance.Loader == "fabric" {
+		lversion, err1 := api.GetLatestFabricLoaderVersion()
+		util.Fatal(err1)
 
-	//Update fabric loader
-	if semver.Compare(instance.FabricLoaderVersion, flVersion) == -1 {
-		api.DownloadFabricJson(state, instance.Version, flVersion)
-		instance.FabricLoaderVersion = flVersion
+		if semver.Compare(instance.LoaderVersion, lversion) == -1 {
+			api.DownloadFabricJson(state, instance.Version, lversion)
+			instance.Loader = lversion
+		}
+	} else if instance.Loader == "quilt" {
+		lversion := api.GetLatestQuiltLoaderVersion()
+
+		if semver.Compare(instance.LoaderVersion, lversion) == -1 {
+			api.DownloadQuiltJson(state, instance.Version, lversion)
+			instance.Loader = lversion
+		}
 	}
 
 	//Update mods
 	for _, mod := range instance.Mods {
 		var modData util.ModData
 		if mod.Platform == "modrinth" {
-			m, err := api.GetModrinthModData(modData.Slug, instance.Version)
+			m, err := api.GetModrinthModData(modData.Slug, instance.Loader, instance.Version)
 			if err != nil {
 				continue
 			}
@@ -275,7 +292,7 @@ func ImportInstance(file string) string {
 	err2 := json.Unmarshal(data, &instanceData)
 	util.Fatal(err2)
 
-	CreateInstance(instanceData.Name, instanceData.Version)
+	CreateInstance(instanceData.Name, instanceData.Loader, instanceData.Version)
 	instance, err2 := GetInstance(instanceData.Name)
 	util.Fatal(err2)
 
@@ -292,20 +309,13 @@ func ImportMods(instance *util.Instance, folder string) {
 	var mods []string
 	filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
 		util.Fatal(err)
-		mods = append(mods, path)
+
+		if _, err = fileutils.GetModJsonFromJar(path); err == nil {
+			mods = append(mods, path)
+		}
+
 		return nil
 	})
-
-	mods = mods[1:]
-
-	for _, mod := range mods {
-		_, err := fileutils.GetModJsonFromJar(mod)
-		if err != nil {
-			pterm.Error.Println(mod + " is not a fabric mod")
-		} else {
-
-		}
-	}
 
 	util.Fatal(SaveInstance(*instance))
 }

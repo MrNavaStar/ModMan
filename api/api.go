@@ -5,3 +5,9 @@ import (
 )
 
 var client = resty.New()
+
+type Version struct {
+	Version string
+	Stable  bool
+	Url     string
+}

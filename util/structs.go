@@ -20,11 +20,12 @@ type ModData struct {
 }
 
 type Instance struct {
-	Name                string
-	Path                string
-	Version             string
-	Mods                []ModData
-	FabricLoaderVersion string
+	Name          string
+	Path          string
+	Version       string
+	Mods          []ModData
+	Loader        string
+	LoaderVersion string
 }
 
 type Profile struct {

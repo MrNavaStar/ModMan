@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -61,14 +62,14 @@ func main() {
 
 					fmt.Println()
 					var instances [][]string
-					instances = append(instances, []string{" ", "Name", "Version", "Mods"})
+					instances = append(instances, []string{" ", "Name", "Loader", "Version", "Mods"})
 					for _, instance := range state.Instances {
 						var prefix string
 						if state.ActiveInstance == instance.Name {
 							prefix = ">"
 						}
 
-						instances = append(instances, []string{prefix, instance.Name, instance.Version, fmt.Sprint(len(instance.Mods))})
+						instances = append(instances, []string{prefix, instance.Name, instance.Loader, instance.Version, fmt.Sprint(len(instance.Mods))})
 					}
 					pterm.DefaultTable.WithHasHeader().WithData(pterm.TableData(instances)).Render()
 					fmt.Println()
@@ -77,23 +78,27 @@ func main() {
 			},
 			{
 				Name:        "make",
-				Usage:       "make [name] [mc version]",
+				Usage:       "make [name] [loader] [mc version]",
 				Description: "Create a new instance",
 				Action: func(c *cli.Context) error {
 					name := c.Args().Get(0)
-					version := c.Args().Get(1)
+					loader := c.Args().Get(1)
+					version := c.Args().Get(2)
 
 					if version == "" {
 						version = api.GetLatestMcVersion()
 					}
 
-					if !api.IsVersionSupported(version) {
+					if loader == "fabric" && !api.IsFabricVersionSupported(version) {
 						pterm.Error.Println("Version not supported ~ Lowest supported is 18w43b (1.14)")
+						return nil
+					} else if loader == "quilt" && !api.IsQuiltVersionSupported(version) {
+						pterm.Error.Println("Version not supported ~ Lowest supported is 22w14a (1.18.2)")
 						return nil
 					}
 
 					pterm.Info.Println("Creating " + name)
-					err1 := services.CreateInstance(name, version)
+					err1 := services.CreateInstance(name, loader, version)
 					if err1 != nil {
 						pterm.Error.Println("Instance with that name already exists")
 						return nil
@@ -164,11 +169,10 @@ func main() {
 
 					var retrymods []failedMod
 					mods := args.Slice()
-					prefix := ""
 					for i := 0; i < len(mods); i++ {
 						mod := mods[i]
 
-						err2 := services.AddMod(&instance, prefix+mod, util.ModData{}, false)
+						err2 := services.AddMod(&instance, mod, util.ModData{}, false)
 						if err2 != nil {
 							if err2.Error() == "mod already added" {
 								pterm.Info.Println(mod + " has already been added")
@@ -176,7 +180,7 @@ func main() {
 							}
 
 							if err2.Error() == "invalid slug" {
-								slug, err3 := api.SearchModrinth(mod)
+								slug, err3 := api.SearchModrinth(instance.Loader, mod)
 								if err3 != nil {
 									pterm.Error.Println("Could not find mod under " + mod)
 									continue
@@ -284,10 +288,15 @@ func main() {
 					fmt.Println()
 					var mods [][]string
 					mods = append(mods, []string{"Name", "Version", "Filename"})
+
+					sort.Slice(instance.Mods, func(i, j int) bool {
+						return instance.Mods[i].Name < instance.Mods[j].Name
+					})
+
 					for _, mod := range instance.Mods {
 						mods = append(mods, []string{mod.Name, mod.Version, mod.Filename})
 					}
-					pterm.DefaultTable.WithHasHeader().WithData(pterm.TableData(mods)).Render()
+					pterm.DefaultTable.WithHasHeader().WithData(mods).Render()
 					fmt.Println()
 					return nil
 				},
@@ -331,17 +340,17 @@ func main() {
 						return nil
 					}
 
-					if !api.IsVersionSupported(version) {
+					if !api.IsFabricVersionSupported(version) {
 						pterm.Error.Println("Version not supported ~ Lowest supported is 18w43b (1.14)")
 						return nil
 					}
 
 					pterm.Info.Println("Migrating " + state.ActiveInstance + " to " + version)
 					newName := state.ActiveInstance + "_Migrated"
-					err1 := services.CreateInstance(newName, version)
+					err1 := services.CreateInstance(newName, oldInstance.Loader, version)
 					if err1 != nil {
 						newName = oldInstance.Name + "_Migrated:" + strings.ReplaceAll(time.Now().Format(time.RFC822), " ", "_")
-						services.CreateInstance(newName, version)
+						services.CreateInstance(newName, oldInstance.Loader, version)
 					}
 
 					newInstance, _ := services.GetInstance(newName)

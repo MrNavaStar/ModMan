@@ -9,28 +9,26 @@ import (
 )
 
 type State struct {
-	DotMinecraft string
-	WorkDir string
-	FabricInstallerVersion string
-	FabricLoaderVersions []string
+	DotMinecraft   string
+	WorkDir        string
 	ActiveInstance string
-	Instances []util.Instance
+	Instances      []util.Instance
 }
 
 func SaveAppState(state State) {
 	dotMinecraft, err := keyring.Get("modman", "dot_minecraft")
-    util.Fatal(err)
+	util.Fatal(err)
 
 	file, err1 := json.MarshalIndent(state, "", " ")
 	util.Fatal(err1)
 
-	err2 := ioutil.WriteFile(dotMinecraft + "/modman/modman.json", file, 0644)
+	err2 := ioutil.WriteFile(dotMinecraft+"/modman/modman.json", file, 0644)
 	util.Fatal(err2)
 }
 
 func LoadAppState() State {
 	dotMinecraft, err := keyring.Get("modman", "dot_minecraft")
-    util.Fatal(err)
+	util.Fatal(err)
 
 	data, err1 := ioutil.ReadFile(dotMinecraft + "/modman/modman.json")
 	util.Fatal(err1)
